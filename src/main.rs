@@ -6,6 +6,8 @@ extern crate serde;
 extern crate serde_json;
 
 mod messages;
+mod deck;
+mod game;
 
 use messages::*;
 use std::cell::{Cell, RefCell};
@@ -33,9 +35,9 @@ fn validate_username(username: &str) -> Result<(), String> {
 struct Server {
     out: Sender,
     clients: Rc<RefCell<HashMap<Token, Client>>>,
-    current_player: Rc<RefCell<Option<Token>>>,
+    current_player: Rc<RefCell<Option<Client>>>,
     current_player_index: Rc<Cell<usize>>,
-    started: bool,
+    started: Rc<Cell<bool>>,
 }
 
 impl Server {
@@ -54,11 +56,13 @@ impl Server {
     }
 
     fn choose_player(&self) -> Client {
-        if !self.started {
+        if !self.started.get() {
             panic!("The game is not started, cannot choose player yet!!!");
         } else if self.clients.borrow().len() == 0 {
             panic!("Can not choose player as there are not clients connected");
         }
+
+        // Select a name
         let clients = self.clients.borrow();
         let players: Vec<&Client> = clients.values().collect();
         let player = players[self.current_player_index.get()].clone();
@@ -74,9 +78,10 @@ impl Server {
     }
 
     fn start_game(&mut self) -> WsResult<()> {
-        self.started = true;
+        self.started.set(true);
         let player = self.choose_player();
-        self.out.send(SendableMessage::Turn {
+        self.current_player.replace(Some(player.clone()));
+        self.out.broadcast(SendableMessage::Turn {
             username: player.username,
         })
     }
@@ -99,16 +104,20 @@ impl Server {
                     self.broadcast_players()?;
                     self.out
                         .send(serde_json::to_string(&SendableMessage::LoggedIn).unwrap())?;
-                    if !self.started {
+                    if !self.started.get() {
                         self.start_game()?;
+                    } else {
+                        if let Some(ref p) = *self.current_player.borrow() {
+                            self.out.send(SendableMessage::Turn {
+                                username: p.username.clone(),
+                            })?;
+                        }
                     }
                     Ok(())
                 } else {
-                    self.out.send(
-                        serde_json::to_string(&SendableMessage::Error {
-                            error: "User is already registerred".to_string(),
-                        }).unwrap(),
-                    )
+                    self.out.send(SendableMessage::Error {
+                        error: "User is already registerred".to_string(),
+                    })
                 }
             }
             _ => self.out.send(Server::unrecognised_msg()),
@@ -158,11 +167,12 @@ fn main() {
     let clients = Rc::new(RefCell::new(HashMap::new()));
     let current_player = Rc::new(RefCell::new(None));
     let current_player_index = Rc::new(Cell::new(0));
+    let started = Rc::new(Cell::new(false));
     listen("127.0.0.1:8080", |out| Server {
         out,
         clients: clients.clone(),
         current_player: current_player.clone(),
         current_player_index: current_player_index.clone(),
-        started: false,
+        started: started.clone(),
     }).unwrap()
 }
