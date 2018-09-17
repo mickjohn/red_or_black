@@ -5,7 +5,10 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use std::cell::RefCell;
+mod messages;
+
+use messages::*;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use ws::util::Token;
@@ -15,6 +18,7 @@ use ws::{listen, CloseCode, Handler, Message, Result as WsResult, Sender};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Client {
     pub username: String,
+    pub token: usize,
 }
 
 fn validate_username(username: &str) -> Result<(), String> {
@@ -29,22 +33,9 @@ fn validate_username(username: &str) -> Result<(), String> {
 struct Server {
     out: Sender,
     clients: Rc<RefCell<HashMap<Token, Client>>>,
-}
-
-#[derive(Deserialize, Serialize)]
-enum ReceivableMessage {
-    RequestId { username: String },
-    GameMove { id: u64, choice: u8 },
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(tag = "msg_type")]
-enum SendableMessage {
-    Ok { msg: String },
-    Players { players: Vec<Client> },
-    Turn { username: String },
-    Error { error: String },
-    LoggedIn,
+    current_player: Rc<RefCell<Option<Token>>>,
+    current_player_index: Rc<Cell<usize>>,
+    started: bool,
 }
 
 impl Server {
@@ -62,32 +53,62 @@ impl Server {
         self.out.broadcast(resp)
     }
 
+    fn choose_player(&self) -> Client {
+        if !self.started {
+            panic!("The game is not started, cannot choose player yet!!!");
+        } else if self.clients.borrow().len() == 0 {
+            panic!("Can not choose player as there are not clients connected");
+        }
+        let clients = self.clients.borrow();
+        let players: Vec<&Client> = clients.values().collect();
+        let player = players[self.current_player_index.get()].clone();
+
+        // Increment current player index.
+        self.current_player_index
+            .set(self.current_player_index.get() + 1);
+        if self.current_player_index.get() >= self.clients.borrow().len() {
+            self.current_player_index.set(0);
+        }
+
+        player
+    }
+
+    fn start_game(&mut self) -> WsResult<()> {
+        self.started = true;
+        let player = self.choose_player();
+        self.out.send(SendableMessage::Turn {
+            username: player.username,
+        })
+    }
+
     fn handle_message(&mut self, msg: &ReceivableMessage) -> WsResult<()> {
-        match &msg {
-            &ReceivableMessage::RequestId { username: ref u } => {
+        match msg {
+            ReceivableMessage::Login { username: ref u } => {
                 if let Err(e) = validate_username(&u) {
                     let err_msg =
                         serde_json::to_string(&SendableMessage::Error { error: e }).unwrap();
                     self.out.send(err_msg)
-                } else {
-                    if !self.clients.borrow().contains_key(&self.out.token()) {
-                        self.clients.borrow_mut().insert(
-                            self.out.token(),
-                            Client {
-                                username: u.clone(),
-                            },
-                        );
-                        let resp = serde_json::to_string(&SendableMessage::LoggedIn).unwrap();
-                        println!("Responding with {}", resp);
-                        self.broadcast_players()?;
-                        self.out.send(resp)
-                    } else {
-                        self.out.send(
-                            serde_json::to_string(&SendableMessage::Error {
-                                error: "User is already registerred".to_string(),
-                            }).unwrap(),
-                        )
+                } else if !self.clients.borrow().contains_key(&self.out.token()) {
+                    self.clients.borrow_mut().insert(
+                        self.out.token(),
+                        Client {
+                            username: u.clone(),
+                            token: self.out.token().0,
+                        },
+                    );
+                    self.broadcast_players()?;
+                    self.out
+                        .send(serde_json::to_string(&SendableMessage::LoggedIn).unwrap())?;
+                    if !self.started {
+                        self.start_game()?;
                     }
+                    Ok(())
+                } else {
+                    self.out.send(
+                        serde_json::to_string(&SendableMessage::Error {
+                            error: "User is already registerred".to_string(),
+                        }).unwrap(),
+                    )
                 }
             }
             _ => self.out.send(Server::unrecognised_msg()),
@@ -135,8 +156,13 @@ impl Handler for Server {
 
 fn main() {
     let clients = Rc::new(RefCell::new(HashMap::new()));
+    let current_player = Rc::new(RefCell::new(None));
+    let current_player_index = Rc::new(Cell::new(0));
     listen("127.0.0.1:8080", |out| Server {
-        out: out,
+        out,
         clients: clients.clone(),
+        current_player: current_player.clone(),
+        current_player_index: current_player_index.clone(),
+        started: false,
     }).unwrap()
 }
