@@ -1,11 +1,17 @@
 use super::Client;
 use serde_json;
 use ws::Message;
+use deck::Card;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize)]
+pub enum CardColour {
+    Red, Black
+}
+
+#[derive(Deserialize)]
 pub enum ReceivableMessage {
     Login { username: String },
-    GameMove { id: u64, choice: u8 },
+    Guess { card_colour: CardColour },
 }
 
 #[derive(Deserialize, Serialize)]

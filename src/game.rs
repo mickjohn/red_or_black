@@ -17,7 +17,7 @@ pub struct GameState {
     clients: HashMap<Token, Client>,
     current_player: Option<Client>,
     current_player_index: usize,
-    started: bool,
+    pub started: bool,
     deck: Deck,
 }
 
@@ -32,21 +32,21 @@ impl GameState {
         }
     }
 
+    pub fn get_clients(&self) -> &HashMap<Token, Client> {
+        &self.clients
+    }
+
     pub fn add_client(&mut self, t: Token, c: Client) {
         self.clients.insert(t, c);
     }
 
-    pub fn remove_client(&mut self, t: &Token) {
-        self.clients.remove(t);
+    pub fn remove_client(&mut self, t: Token) {
+        self.clients.remove(&t);
     }
 
-    // pub fn set_current_player(&mut self, c: Client) {
-    //     self.current_player = Some(c);
-    // }
-
-    // pub fn get_current_player(&self) -> &Option<Client> {
-    //     &self.current_player
-    // }
+    pub fn get_current_player(&self) -> &Option<Client> {
+        &self.current_player
+    }
 
     pub fn next_player(&mut self) -> &Client {
         let players: Vec<&Client> = self.clients.values().collect();
@@ -64,6 +64,8 @@ impl GameState {
         } else {
             self.current_player_index += 1;
         }
+
+        self.current_player = Some(p.clone());
 
         p
     }

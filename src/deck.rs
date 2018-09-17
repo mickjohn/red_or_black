@@ -43,17 +43,17 @@ impl Deck {
 
         let mut cards = Vec::new();
 
-        for suit in vec![Spade, Club, Diamond, Heart] {
-            for value in vec![
+        for suit in &[Spade, Club, Diamond, Heart] {
+            for value in &[
                 Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King,
             ] {
                 cards.push(Card {
-                    value: value,
-                    suit: suit,
+                    value: *value,
+                    suit: *suit,
                 });
             }
         }
-        Deck { cards: cards }
+        Deck { cards }
     }
 
     pub fn new_shuffled() -> Self {
