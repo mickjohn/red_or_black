@@ -2,8 +2,8 @@ use rand::{thread_rng, Rng};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 pub struct Card {
-    value: Value,
-    suit: Suit,
+    pub value: Value,
+    pub suit: Suit,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]

@@ -4,6 +4,9 @@ extern crate ws;
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+extern crate env_logger;
+#[macro_use]
+extern crate log;
 
 mod deck;
 mod game;
@@ -11,6 +14,7 @@ mod messages;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::env;
 use ws::Message::*;
 use ws::{listen, CloseCode, Handler, Message, Result as WsResult, Sender};
 
@@ -48,7 +52,8 @@ impl Server {
     fn broadcast_players(&mut self) -> WsResult<()> {
         let game_state = self.game_state.borrow();
         let usernames: Vec<Client> = game_state.get_clients().values().cloned().collect();
-        self.out.broadcast(SendableMessage::Players { players: usernames })
+        self.out
+            .broadcast(SendableMessage::Players { players: usernames })
     }
 
     fn start_game(&mut self) -> WsResult<()> {
@@ -58,6 +63,24 @@ impl Server {
         self.out.broadcast(SendableMessage::Turn {
             username: player.username.clone(),
         })
+    }
+
+    fn validate_guess(guess: &CardColour, card: &Card) -> bool {
+        if card_colour == &CardColour::Black
+            && (card.suit == Suit::Spade || card.suit == Suit::Club)
+            {
+                info!("user guessed correctly");
+                true
+            }
+        else if card_colour == &CardColour::Red
+            && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
+            {
+                info!("user guessed correctly");
+                true
+            } else {
+                info!("incorrect guess");
+                false
+            }
     }
 
     fn handle_message(&mut self, msg: &ReceivableMessage) -> WsResult<()> {
@@ -79,8 +102,7 @@ impl Server {
                         },
                     );
                     self.broadcast_players()?;
-                    self.out
-                        .send(SendableMessage::LoggedIn)?;
+                    self.out.send(SendableMessage::LoggedIn)?;
                     if !self.game_state.borrow().started {
                         self.start_game()?;
                     } else if let Some(ref p) = *self.game_state.borrow().get_current_player() {
@@ -95,7 +117,29 @@ impl Server {
                     })
                 }
             }
-            _ => self.out.send(Server::unrecognised_msg()),
+            ReceivableMessage::Guess { card_colour } => {
+                use deck::Suit;
+                let mut game_state = self.game_state.borrow_mut();
+                let card = game_state.get_card();
+                debug!("Card drawn from deck = {:?}", card);
+                debug!("Guess from user = {:?}", card_colour);
+                if card_colour == &CardColour::Black
+                    && (card.suit == Suit::Spade || card.suit == Suit::Club)
+                {
+                    info!("user guessed correctly");
+                    self.out.send(SendableMessage::CorrectGuess)
+                }
+                else if card_colour == &CardColour::Red
+                    && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
+                {
+                    info!("user guessed correctly");
+                    self.out.send(SendableMessage::CorrectGuess)
+                } else {
+                    info!("incorrect guess");
+                    self.out.send(SendableMessage::WrongGuess)
+                }
+            }
+            // _ => self.out.send(Server::unrecognised_msg()),
         }
     }
 }
@@ -104,7 +148,7 @@ impl Handler for Server {
     // Read the message and parse it to one of the ReceivableMessage types.
     // Then examine the message and respond with the Approperate SendableMessage type.
     fn on_message(&mut self, msg: Message) -> WsResult<()> {
-        println!("Received message: {}", msg);
+        debug!("Received message: {}", msg);
         // println!("{:#?}", self.clients.borrow());
 
         match self
@@ -113,8 +157,8 @@ impl Handler for Server {
             .get_clients()
             .get(&self.out.token())
         {
-            Some(s) => println!("Have gotten messages from {} before", s.username),
-            _ => println!("This is a new user"),
+            Some(s) => debug!("Have gotten messages from {} before", s.username),
+            _ => debug!("This is a new user"),
         };
 
         match msg {
@@ -136,14 +180,17 @@ impl Handler for Server {
         self.game_state.borrow_mut().remove_client(self.out.token());
         self.broadcast_players().unwrap();
         match code {
-            CloseCode::Normal => println!("The client is done with the connection."),
-            CloseCode::Away => println!("The client is leaving the site."),
-            _ => println!("The client encountered an error: {}", reason),
+            CloseCode::Normal => info!("The client is done with the connection."),
+            CloseCode::Away => info!("The client is leaving the site."),
+            _ => error!("The client encountered an error: {}", reason),
         }
     }
 }
 
 fn main() {
+    env::set_var("RUST_LOG", "websocket_red_or_black=debug");
+    env_logger::init();
+    info!("Starting up!");
     let game_state = Rc::new(RefCell::new(GameState::new()));
     listen("127.0.0.1:8080", |out| Server {
         out,

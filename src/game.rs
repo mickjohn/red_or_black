@@ -1,17 +1,8 @@
 use super::Client;
-use deck::Deck;
+use deck::{Card, Deck};
 
-use ws::util::Token;
-// use std::cell::{Cell, RefCell};
-// use std::rc::Rc;
 use std::collections::HashMap;
-
-// pub struct GameState {
-//     clients: Rc<RefCell<HashMap<Token, Client>>>,
-//     current_player: Rc<RefCell<Option<Client>>>,
-//     current_player_index: Rc<Cell<usize>>,
-//     started: Rc<Cell<bool>>,
-// }
+use ws::util::Token;
 
 pub struct GameState {
     clients: HashMap<Token, Client>,
@@ -29,6 +20,15 @@ impl GameState {
             current_player_index: 0,
             started: false,
             deck: Deck::new_shuffled(),
+        }
+    }
+
+    pub fn get_card(&mut self) -> Card {
+        if let Some(card) = self.deck.pop() {
+            card
+        } else {
+            self.deck = Deck::new_shuffled();
+            self.deck.pop().unwrap()
         }
     }
 

@@ -1,11 +1,12 @@
 use super::Client;
+use deck::Card;
 use serde_json;
 use ws::Message;
-use deck::Card;
 
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub enum CardColour {
-    Red, Black
+    Red,
+    Black,
 }
 
 #[derive(Deserialize)]
@@ -22,6 +23,8 @@ pub enum SendableMessage {
     Turn { username: String },
     Error { error: String },
     LoggedIn,
+    CorrectGuess,
+    WrongGuess,
 }
 
 impl From<SendableMessage> for Message {
