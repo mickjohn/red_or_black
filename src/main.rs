@@ -2,9 +2,9 @@ extern crate rand;
 extern crate ws;
 #[macro_use]
 extern crate serde_derive;
+extern crate env_logger;
 extern crate serde;
 extern crate serde_json;
-extern crate env_logger;
 #[macro_use]
 extern crate log;
 
@@ -13,11 +13,12 @@ mod game;
 mod messages;
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::env;
+use std::rc::Rc;
 use ws::Message::*;
 use ws::{listen, CloseCode, Handler, Message, Result as WsResult, Sender};
 
+use deck::Card;
 use game::GameState;
 use messages::*;
 
@@ -65,22 +66,10 @@ impl Server {
         })
     }
 
-    fn validate_guess(guess: &CardColour, card: &Card) -> bool {
-        if card_colour == &CardColour::Black
-            && (card.suit == Suit::Spade || card.suit == Suit::Club)
-            {
-                info!("user guessed correctly");
-                true
-            }
-        else if card_colour == &CardColour::Red
-            && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
-            {
-                info!("user guessed correctly");
-                true
-            } else {
-                info!("incorrect guess");
-                false
-            }
+    fn validate_guess(guess: &CardColour, card: Card) -> bool {
+        use deck::Suit;
+        guess == &CardColour::Black && (card.suit == Suit::Spade || card.suit == Suit::Club)
+            || guess == &CardColour::Red && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
     }
 
     fn handle_message(&mut self, msg: &ReceivableMessage) -> WsResult<()> {
@@ -118,26 +107,40 @@ impl Server {
                 }
             }
             ReceivableMessage::Guess { card_colour } => {
-                use deck::Suit;
+                // Check that the guess is coming from the 'current_player'
+                let (client, current_player) = {
+                    let game_state = self.game_state.borrow();
+                    let clients = game_state.get_clients();
+                    let client = clients.get(&self.out.token());
+                    if let (Some(cp), Some(c)) = (game_state.get_current_player(), client) {
+                        if cp != c {
+                            info!("It's not {}'s turn, ignoring guess.", c.username);
+                            return self.out.send(SendableMessage::Error { error: "It's not this players turn".to_string()});
+                        }
+                    }
+                    let username = match client {
+                        Some(ref c) => c.username.clone(),
+                        None => "<no username>".to_string(),
+                    };
+                    (username, game_state.get_current_player().clone())
+                };
+
                 let mut game_state = self.game_state.borrow_mut();
                 let card = game_state.get_card();
                 debug!("Card drawn from deck = {:?}", card);
                 debug!("Guess from user = {:?}", card_colour);
-                if card_colour == &CardColour::Black
-                    && (card.suit == Suit::Spade || card.suit == Suit::Club)
-                {
-                    info!("user guessed correctly");
-                    self.out.send(SendableMessage::CorrectGuess)
-                }
-                else if card_colour == &CardColour::Red
-                    && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
-                {
-                    info!("user guessed correctly");
-                    self.out.send(SendableMessage::CorrectGuess)
+                if Server::validate_guess(&card_colour, card) {
+                    info!("{} guessed correctly", client);
+                    self.out.send(SendableMessage::CorrectGuess)?;
                 } else {
-                    info!("incorrect guess");
-                    self.out.send(SendableMessage::WrongGuess)
+                    info!("{} guessed incorrectly", client);
+                    self.out.send(SendableMessage::WrongGuess)?;
                 }
+                let next_player = game_state.next_player();
+                info!("It is now {}'s turn", next_player.username);
+                self.out.broadcast(SendableMessage::Turn {
+                    username: next_player.username.clone(),
+                })
             }
             // _ => self.out.send(Server::unrecognised_msg()),
         }
@@ -149,7 +152,6 @@ impl Handler for Server {
     // Then examine the message and respond with the Approperate SendableMessage type.
     fn on_message(&mut self, msg: Message) -> WsResult<()> {
         debug!("Received message: {}", msg);
-        // println!("{:#?}", self.clients.borrow());
 
         match self
             .game_state
@@ -176,9 +178,43 @@ impl Handler for Server {
         // reason for closing the connection. I many cases, `reason` will be an empty string.
         // So, you may not normally want to display `reason` to the user,
         // but let's assume that we know that `reason` is human-readable.
-        println!("Removing player...");
-        self.game_state.borrow_mut().remove_client(self.out.token());
+
+        // Broadcast the name of the player who is leaving
+        match self
+            .game_state
+            .borrow()
+            .get_clients()
+            .get(&self.out.token())
+        {
+            Some(c) => {
+                info!("Removing player {}", c.username);
+                self.out.broadcast(SendableMessage::PlayerHasLeft {
+                    username: c.username.clone(),
+                });
+            }
+            _ => (),
+        }
+
+        // remove the player, and if it's their go, then move to next player broadcast that the current player has
+        // changed.
+        {
+            let mut game_state = self.game_state.borrow_mut();
+            debug!("Removing player");
+            if game_state.remove_client(self.out.token()) {
+                let player = game_state.get_current_player();
+                match player {
+                    Some(p) => {
+                        self.out.broadcast(SendableMessage::Turn {
+                            username: p.username.clone(),
+                        });
+                    }
+                    _ => (),
+                };
+            }
+        }
+
         self.broadcast_players().unwrap();
+
         match code {
             CloseCode::Normal => info!("The client is done with the connection."),
             CloseCode::Away => info!("The client is leaving the site."),

@@ -25,6 +25,7 @@ pub enum SendableMessage {
     LoggedIn,
     CorrectGuess,
     WrongGuess,
+    PlayerHasLeft { username: String },
 }
 
 impl From<SendableMessage> for Message {
