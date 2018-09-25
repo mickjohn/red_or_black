@@ -25,6 +25,10 @@ impl GameState {
         }
     }
 
+    pub fn get_drinking_seconds(&self) -> u16 {
+        self.drinking_seconds
+    }
+
     pub fn increment_drinking_seconds(&mut self) {
         self.drinking_seconds += 5;
     }

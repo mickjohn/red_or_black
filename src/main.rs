@@ -108,7 +108,7 @@ impl Server {
             }
             ReceivableMessage::Guess { card_colour } => {
                 // Check that the guess is coming from the 'current_player'
-                let (client, current_player) = {
+                let (client, _current_player) = {
                     let game_state = self.game_state.borrow();
                     let clients = game_state.get_clients();
                     let client = clients.get(&self.out.token());
@@ -132,9 +132,12 @@ impl Server {
                 if Server::validate_guess(&card_colour, card) {
                     info!("{} guessed correctly", client);
                     self.out.send(SendableMessage::CorrectGuess)?;
+                    game_state.increment_drinking_seconds();
                 } else {
                     info!("{} guessed incorrectly", client);
                     self.out.send(SendableMessage::WrongGuess)?;
+                    let _seconds = game_state.get_drinking_seconds();
+                    game_state.reset_drinking_seconds();
                 }
                 let next_player = game_state.next_player();
                 info!("It is now {}'s turn", next_player.username);
@@ -190,7 +193,7 @@ impl Handler for Server {
                 info!("Removing player {}", c.username);
                 self.out.broadcast(SendableMessage::PlayerHasLeft {
                     username: c.username.clone(),
-                });
+                }).unwrap();
             }
             _ => (),
         }
@@ -206,7 +209,7 @@ impl Handler for Server {
                     Some(p) => {
                         self.out.broadcast(SendableMessage::Turn {
                             username: p.username.clone(),
-                        });
+                        }).unwrap();
                     }
                     _ => (),
                 };
@@ -228,7 +231,7 @@ fn main() {
     env_logger::init();
     info!("Starting up!");
     let game_state = Rc::new(RefCell::new(GameState::new()));
-    listen("127.0.0.1:8080", |out| Server {
+    listen("127.0.0.1:8000", |out| Server {
         out,
         game_state: game_state.clone(),
     }).unwrap()

@@ -1,5 +1,4 @@
 use super::Client;
-use deck::Card;
 use serde_json;
 use ws::Message;
 

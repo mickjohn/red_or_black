@@ -62,13 +62,13 @@ impl Deck {
         deck
     }
 
-    pub fn shuffle(&mut self) {
-        thread_rng().shuffle(self.cards.as_mut_slice());
-    }
+    // pub fn shuffle(&mut self) {
+    //     thread_rng().shuffle(self.cards.as_mut_slice());
+    // }
 
-    pub fn peek(&self) -> Option<&Card> {
-        self.cards.get(0)
-    }
+    // pub fn peek(&self) -> Option<&Card> {
+    //     self.cards.get(0)
+    // }
 
     pub fn pop(&mut self) -> Option<Card> {
         self.cards.pop()
