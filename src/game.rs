@@ -5,8 +5,13 @@ use std::collections::HashMap;
 use ws::util::Token;
 
 pub struct GameState {
+    // Used to map incoming messages to a username
     clients: HashMap<Token, Client>,
+    // Vec to keep track of current clients
+    clients_vec: Vec<Client>,
+    // The current turn
     current_player: Option<Client>,
+    // index used to pick player from the map
     current_player_index: usize,
     pub started: bool,
     deck: Deck,
@@ -17,6 +22,7 @@ impl GameState {
     pub fn new() -> Self {
         GameState {
             clients: HashMap::new(),
+            clients_vec: Vec::new(),
             current_player: None,
             current_player_index: 0,
             started: false,
@@ -47,12 +53,17 @@ impl GameState {
         }
     }
 
+    pub fn get_clients_vec(&self) -> &Vec<Client> {
+        &self.clients_vec
+    }
+
     pub fn get_clients(&self) -> &HashMap<Token, Client> {
         &self.clients
     }
 
     pub fn add_client(&mut self, t: Token, c: Client) {
-        self.clients.insert(t, c);
+        self.clients.insert(t, c.clone());
+        self.clients_vec.push(c);
     }
 
     // Remove a client from the clients map
@@ -62,6 +73,12 @@ impl GameState {
     // function can decide whether or not to broadcast a message to the clients indicating that the
     // current_player has changed.
     pub fn remove_client(&mut self, t: Token) -> bool {
+        if let Some(client) = self.clients.get(&t) {
+            if let Some(position) = self.clients_vec.iter().position(|ref c| c == &client) {
+                self.clients_vec.remove(position);
+            }
+        }
+
         if self.clients.get(&t) == self.current_player.as_ref() {
             self.clients.remove(&t);
             if self.clients.len() > 1 {
@@ -89,16 +106,17 @@ impl GameState {
     }
 
     pub fn next_player(&mut self) -> &Client {
-        let players: Vec<&Client> = self.clients.values().collect();
+        // let players: Vec<&Client> = self.clients.values().collect();
+        // let players: Vec<&Client> = self.clients.values().collect();
 
         // Check bounds incase len has shrunk from players leaving
-        if self.current_player_index >= self.clients.len() {
+        if self.current_player_index >= self.clients_vec.len() {
             self.current_player_index = 0;
         }
 
-        let player = players[self.current_player_index];
+        let player = &self.clients_vec[self.current_player_index];
         self.current_player_index += 1;
         self.current_player = Some(player.clone());
-        player
+        &player
     }
 }

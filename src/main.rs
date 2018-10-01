@@ -52,7 +52,8 @@ impl Server {
 
     fn broadcast_players(&mut self) -> WsResult<()> {
         let game_state = self.game_state.borrow();
-        let usernames: Vec<Client> = game_state.get_clients().values().cloned().collect();
+        // let usernames: Vec<Client> = game_state.get_clients().values().cloned().collect();
+        let usernames: Vec<Client> = game_state.get_clients_vec().iter().cloned().collect();
         self.out
             .broadcast(SendableMessage::Players { players: usernames })
     }
