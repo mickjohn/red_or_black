@@ -108,7 +108,7 @@ impl Server {
             }
             ReceivableMessage::Guess { card_colour } => {
                 // Check that the guess is coming from the 'current_player'
-                let (client, _current_player) = {
+                let (client, current_player) = {
                     let game_state = self.game_state.borrow();
                     let clients = game_state.get_clients();
                     let client = clients.get(&self.out.token());
@@ -131,12 +131,11 @@ impl Server {
                 debug!("Guess from user = {:?}", card_colour);
                 if Server::validate_guess(&card_colour, card) {
                     info!("{} guessed correctly", client);
-                    self.out.send(SendableMessage::CorrectGuess)?;
-                    game_state.increment_drinking_seconds();
+                    let drinking_seconds = game_state.increment_drinking_seconds();
+                    self.out.broadcast(SendableMessage::CorrectGuess { drinking_seconds, username: current_player.unwrap().username } )?;
                 } else {
                     info!("{} guessed incorrectly", client);
-                    self.out.send(SendableMessage::WrongGuess)?;
-                    let _seconds = game_state.get_drinking_seconds();
+                    self.out.broadcast(SendableMessage::WrongGuess { drinking_seconds: game_state.get_drinking_seconds(), username: current_player.unwrap().username })?;
                     game_state.reset_drinking_seconds();
                 }
                 let next_player = game_state.next_player();
@@ -183,19 +182,17 @@ impl Handler for Server {
         // but let's assume that we know that `reason` is human-readable.
 
         // Broadcast the name of the player who is leaving
-        match self
+        if let Some(c) = self
             .game_state
             .borrow()
             .get_clients()
             .get(&self.out.token())
         {
-            Some(c) => {
-                info!("Removing player {}", c.username);
-                self.out.broadcast(SendableMessage::PlayerHasLeft {
+            info!("Removing player {}", c.username);
+            self.out
+                .broadcast(SendableMessage::PlayerHasLeft {
                     username: c.username.clone(),
                 }).unwrap();
-            }
-            _ => (),
         }
 
         // remove the player, and if it's their go, then move to next player broadcast that the current player has
@@ -205,14 +202,12 @@ impl Handler for Server {
             debug!("Removing player");
             if game_state.remove_client(self.out.token()) {
                 let player = game_state.get_current_player();
-                match player {
-                    Some(p) => {
-                        self.out.broadcast(SendableMessage::Turn {
+                if let Some(p) = player {
+                    self.out
+                        .broadcast(SendableMessage::Turn {
                             username: p.username.clone(),
                         }).unwrap();
-                    }
-                    _ => (),
-                };
+                }
             }
         }
 
@@ -221,17 +216,20 @@ impl Handler for Server {
         match code {
             CloseCode::Normal => info!("The client is done with the connection."),
             CloseCode::Away => info!("The client is leaving the site."),
-            _ => error!("The client encountered an error: {}", reason),
+            _ => error!("Close code: {:?}, reason: {}", code, reason),
         }
     }
 }
 
 fn main() {
-    env::set_var("RUST_LOG", "websocket_red_or_black=debug");
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "websocket_red_or_black=debug");
+    }
     env_logger::init();
     info!("Starting up!");
     let game_state = Rc::new(RefCell::new(GameState::new()));
-    listen("127.0.0.1:8000", |out| Server {
+    // listen("127.0.0.1:8000", |out| Server {
+    listen("0.0.0.0:8000", |out| Server {
         out,
         game_state: game_state.clone(),
     }).unwrap()

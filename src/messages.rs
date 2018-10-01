@@ -17,14 +17,30 @@ pub enum ReceivableMessage {
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "msg_type")]
 pub enum SendableMessage {
-    Ok { msg: String },
-    Players { players: Vec<Client> },
-    Turn { username: String },
-    Error { error: String },
+    Ok {
+        msg: String,
+    },
+    Players {
+        players: Vec<Client>,
+    },
+    Turn {
+        username: String,
+    },
+    Error {
+        error: String,
+    },
     LoggedIn,
-    CorrectGuess,
-    WrongGuess,
-    PlayerHasLeft { username: String },
+    CorrectGuess {
+        drinking_seconds: u16,
+        username: String,
+    },
+    WrongGuess {
+        drinking_seconds: u16,
+        username: String,
+    },
+    PlayerHasLeft {
+        username: String,
+    },
 }
 
 impl From<SendableMessage> for Message {

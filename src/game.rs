@@ -21,7 +21,7 @@ impl GameState {
             current_player_index: 0,
             started: false,
             deck: Deck::new_shuffled(),
-            drinking_seconds: 0,
+            drinking_seconds: 5,
         }
     }
 
@@ -29,12 +29,13 @@ impl GameState {
         self.drinking_seconds
     }
 
-    pub fn increment_drinking_seconds(&mut self) {
+    pub fn increment_drinking_seconds(&mut self) -> u16 {
         self.drinking_seconds += 5;
+        self.drinking_seconds
     }
 
     pub fn reset_drinking_seconds(&mut self) {
-        self.drinking_seconds = 0;
+        self.drinking_seconds = 5;
     }
 
     pub fn get_card(&mut self) -> Card {
