@@ -10,6 +10,7 @@ extern crate log;
 
 mod deck;
 mod game;
+mod game2;
 mod messages;
 
 use std::cell::RefCell;
@@ -222,6 +223,9 @@ impl Handler for Server {
 }
 
 fn main() {
+    let usernames: Vec<String> = vec!["mick".to_string()];
+    let rob = game2::RedOrBlack::new(usernames);
+
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "websocket_red_or_black=debug");
     }
