@@ -18,6 +18,7 @@ impl RedOrBlack {
         }
     }
 
+    #[cfg(test)] // only used by test code at the moment.
     pub fn get_penalty(&self) -> u16 {
         self.penalty
     }
@@ -47,8 +48,7 @@ impl RedOrBlack {
             self.index = 0;
         }
 
-        let player = self.usernames.get(self.index);
-        player
+        self.usernames.get(self.index)
     }
 
     pub fn remove_player(&mut self, username: &str) -> bool {
@@ -87,7 +87,7 @@ impl RedOrBlack {
         }
     }
 
-    pub fn validate_guess(&self, guess: &CardColour, card: &Card) -> bool {
+    pub fn validate_guess(&self, guess: &CardColour, card: Card) -> bool {
         // let card = self.draw_card();
         guess == &CardColour::Black && (card.suit == Suit::Spade || card.suit == Suit::Club)
             || guess == &CardColour::Red && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
@@ -96,7 +96,7 @@ impl RedOrBlack {
     // validate guess, and change players turn
     pub fn play_turn(&mut self, guess: &CardColour) -> (bool, u16, Option<&String>) {
         let card = self.draw_card();
-        let correct = self.validate_guess(guess, &card);
+        let correct = self.validate_guess(guess, card);
         let penalty = if correct {
             self.increment_penalty()
         } else {

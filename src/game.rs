@@ -1,19 +1,15 @@
 // use super::Client;
-use deck::{Card, Deck};
 use game2::RedOrBlack;
 
 use serde_json;
 use std::collections::HashMap;
-use std::sync::Mutex;
-use ws;
 use ws::util::Token;
 
 use messages::*;
 use std::cell::RefCell;
-use std::env;
 use std::rc::Rc;
 use ws::Message::*;
-use ws::{listen, CloseCode, Handler, Message, Result as WsResult, Sender};
+use ws::{CloseCode, Handler, Message, Result as WsResult, Sender};
 
 #[derive(Clone)]
 pub struct Server {
@@ -66,7 +62,7 @@ impl Server {
         info!("Adding client {}", username);
         {
             let mut clients = self.clients.borrow_mut();
-            if let Some(_) = clients.get(&self.out.token()) {
+            if clients.get(&self.out.token()).is_some() {
                 // Client already exists.. do nothing
                 info!("{} is already logged in... doing nothing.", username);
                 return;
@@ -84,13 +80,16 @@ impl Server {
         // scope for game mutable borrow
         let current_player = {
             let mut game = self.game.borrow_mut();
-            game.add_player(username.clone());
+            game.add_player(username);
             game.get_current_player().unwrap().clone()
         };
 
-        self.broadcast_players();
-        self.out.send(SendableMessage::LoggedIn);
-        self.out.send(SendableMessage::Turn { username: current_player });
+        self.broadcast_players().unwrap();
+        self.out.send(SendableMessage::LoggedIn).unwrap();
+        self.out
+            .send(SendableMessage::Turn {
+                username: current_player,
+            }).unwrap();
     }
 
     fn check_is_players_go(&mut self) -> bool {
@@ -100,7 +99,7 @@ impl Server {
             (clients.get(&self.out.token()), game.get_current_player())
         {
             if &client.username == username {
-                return true
+                return true;
             }
         }
         false
@@ -108,6 +107,7 @@ impl Server {
 
     fn recieved_guess(&mut self, card_colour: &CardColour) {
         if !self.check_is_players_go() {
+            // It's not this players go, do nothing.
             return;
         }
         let mut game = self.game.borrow_mut();
@@ -126,18 +126,19 @@ impl Server {
                 username: current_player,
             }
         };
-        self.out.send(message);
-        self.out.send(SendableMessage::Turn {
-            username: next_player.unwrap().clone(),
-        });
+        self.out.send(message).unwrap();
+        self.out
+            .send(SendableMessage::Turn {
+                username: next_player.unwrap().clone(),
+            }).unwrap();
     }
 
-    fn write_messages(&mut self, messages: Vec<SendableMessage>) -> WsResult<()> {
-        for message in messages {
-            self.out.send(message)?;
-        }
-        Ok(())
-    }
+    // fn write_messages(&mut self, messages: Vec<SendableMessage>) -> WsResult<()> {
+    //     for message in messages {
+    //         self.out.send(message)?;
+    //     }
+    //     Ok(())
+    // }
 
     fn broadcast_messages(&self, messages: Vec<SendableMessage>) -> WsResult<()> {
         for message in messages {
@@ -166,7 +167,7 @@ impl Server {
             }
         }
         clients.remove(&self.out.token());
-        self.broadcast_messages(broadcast_messages);
+        self.broadcast_messages(broadcast_messages).unwrap();
     }
 }
 
