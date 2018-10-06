@@ -133,23 +133,8 @@ impl Server {
             }).unwrap();
     }
 
-    // fn write_messages(&mut self, messages: Vec<SendableMessage>) -> WsResult<()> {
-    //     for message in messages {
-    //         self.out.send(message)?;
-    //     }
-    //     Ok(())
-    // }
-
-    fn broadcast_messages(&self, messages: Vec<SendableMessage>) -> WsResult<()> {
-        for message in messages {
-            self.out.broadcast(message)?;
-        }
-        Ok(())
-    }
-
     fn remove_client(&mut self) {
         debug!("Removing client");
-        let mut broadcast_messages = Vec::new();
         let mut clients = self.clients.borrow_mut();
         let mut game = self.game.borrow_mut();
 
@@ -157,17 +142,16 @@ impl Server {
             if game.remove_player(&client.username) {
                 let player = game.get_current_player();
                 if let Some(p) = player {
-                    broadcast_messages.push(SendableMessage::PlayerHasLeft {
+                    self.out.broadcast(SendableMessage::PlayerHasLeft {
                         username: p.clone(),
-                    });
-                    broadcast_messages.push(SendableMessage::Turn {
+                    }).unwrap();
+                    self.out.broadcast(SendableMessage::Turn {
                         username: p.clone(),
-                    });
+                    }).unwrap();
                 }
             }
         }
         clients.remove(&self.out.token());
-        self.broadcast_messages(broadcast_messages).unwrap();
     }
 }
 
