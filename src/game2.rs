@@ -98,9 +98,12 @@ impl RedOrBlack {
         let card = self.draw_card();
         let correct = self.validate_guess(guess, &card);
         let penalty = if correct {
-            self.reset_penalty()
-        } else {
             self.increment_penalty()
+        } else {
+            let penalty = self.penalty;
+            self.reset_penalty();
+            penalty
+            // self.increment_penalty()
         };
         let player = self.next_player();
         (correct, penalty, player)
@@ -134,13 +137,15 @@ mod tests {
         fn incorrect_guess_increments() {
             let usernames = vec!["mick".to_string()];
             let mut game = RedOrBlack::new(usernames);
+            let mut correct_count = 0;
             let guess = CardColour::Red;
             // while we guess correctly the penalty should not change
             while game.play_turn(&guess).0 == true {
-                assert_eq!(game.get_penalty(), 5);
+                correct_count += 1;
+                assert_eq!(game.get_penalty(), 5 * correct_count);
             }
-            // But after a wrong guess it should increment
-            assert_eq!(game.get_penalty(), 10);
+            // After a wrong guess the penalty should be reset
+            assert_eq!(game.get_penalty(), 5);
         }
     }
 
@@ -221,7 +226,7 @@ mod tests {
 
     #[test]
     fn validate_guess() {
-        use deck::{Card, Value, Suit};
+        use deck::{Card, Suit, Value};
         use messages::CardColour;
 
         let game = RedOrBlack::new(vec!["mick".to_string()]);
@@ -233,7 +238,7 @@ mod tests {
                     suit: Suit::Heart,
                 }
             ),
-            true 
+            true
         );
 
         assert_eq!(

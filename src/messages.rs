@@ -1,4 +1,4 @@
-use super::Client;
+use game::Client;
 use serde_json;
 use ws::Message;
 
@@ -46,5 +46,11 @@ pub enum SendableMessage {
 impl From<SendableMessage> for Message {
     fn from(s: SendableMessage) -> Message {
         Message::text(serde_json::to_string(&s).unwrap())
+    }
+}
+
+impl<'a> From<&'a SendableMessage> for Message {
+    fn from(s: &'a SendableMessage) -> Message {
+        Message::text(serde_json::to_string(s).unwrap())
     }
 }

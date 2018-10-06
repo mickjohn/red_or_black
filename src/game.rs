@@ -1,122 +1,200 @@
-use super::Client;
+// use super::Client;
 use deck::{Card, Deck};
+use game2::RedOrBlack;
 
+use serde_json;
 use std::collections::HashMap;
+use std::sync::Mutex;
+use ws;
 use ws::util::Token;
 
-pub struct GameState {
-    // Used to map incoming messages to a username
-    clients: HashMap<Token, Client>,
-    // Vec to keep track of current clients
-    clients_vec: Vec<Client>,
-    // The current turn
-    current_player: Option<Client>,
-    // index used to pick player from the map
-    current_player_index: usize,
-    pub started: bool,
-    deck: Deck,
-    drinking_seconds: u16,
+use messages::*;
+use std::cell::RefCell;
+use std::env;
+use std::rc::Rc;
+use ws::Message::*;
+use ws::{listen, CloseCode, Handler, Message, Result as WsResult, Sender};
+
+#[derive(Clone)]
+pub struct Server {
+    pub out: Sender,
+    // The clients need to be modified by multiple connections
+    pub clients: Rc<RefCell<HashMap<Token, Client>>>,
+    // The game state also needs to be modified by multiple connections
+    pub game: Rc<RefCell<RedOrBlack>>,
+    // A mutex to allow only one 'thread' to send messages at a time.
+    // This is to ensure messages are sent in the order I want them to.
+    // pub write_lock: Rc<Mutex<()>>,
 }
 
-impl GameState {
-    pub fn new() -> Self {
-        GameState {
-            clients: HashMap::new(),
-            clients_vec: Vec::new(),
-            current_player: None,
-            current_player_index: 0,
-            started: false,
-            deck: Deck::new_shuffled(),
-            drinking_seconds: 5,
-        }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Client {
+    pub username: String,
+    pub token: usize,
+}
+
+impl Server {
+    // Helper functions
+    fn unrecognised_msg() -> String {
+        let resp = SendableMessage::Error {
+            error: "Unrecognised message".to_string(),
+        };
+        serde_json::to_string(&resp).unwrap()
     }
 
-    pub fn get_drinking_seconds(&self) -> u16 {
-        self.drinking_seconds
+    fn broadcast_players(&mut self) -> WsResult<()> {
+        let clients_map = self.clients.borrow();
+        self.out.broadcast(SendableMessage::Players {
+            players: clients_map.values().cloned().collect(),
+        })
     }
+    // end helpers
 
-    pub fn increment_drinking_seconds(&mut self) -> u16 {
-        self.drinking_seconds += 5;
-        self.drinking_seconds
-    }
-
-    pub fn reset_drinking_seconds(&mut self) {
-        self.drinking_seconds = 5;
-    }
-
-    pub fn get_card(&mut self) -> Card {
-        if let Some(card) = self.deck.pop() {
-            card
-        } else {
-            self.deck = Deck::new_shuffled();
-            self.deck.pop().unwrap()
-        }
-    }
-
-    pub fn get_clients_vec(&self) -> &Vec<Client> {
-        &self.clients_vec
-    }
-
-    pub fn get_clients(&self) -> &HashMap<Token, Client> {
-        &self.clients
-    }
-
-    pub fn add_client(&mut self, t: Token, c: Client) {
-        self.clients.insert(t, c.clone());
-        self.clients_vec.push(c);
-    }
-
-    // Remove a client from the clients map
-    // If it's the clients go, then progress the turn to the next player.
-    // If the player who is leaving is the only player, then stop the game
-    // This function returns true if the 'current_player' has changed. This is so that the calling
-    // function can decide whether or not to broadcast a message to the clients indicating that the
-    // current_player has changed.
-    pub fn remove_client(&mut self, t: Token) -> bool {
-        if let Some(client) = self.clients.get(&t) {
-            if let Some(position) = self.clients_vec.iter().position(|ref c| c == &client) {
-                self.clients_vec.remove(position);
+    fn handle_message(&mut self, msg: &ReceivableMessage) {
+        match msg {
+            ReceivableMessage::Login { username: ref u } => {
+                self.add_client(u.to_string());
+            }
+            ReceivableMessage::Guess { ref card_colour } => {
+                self.recieved_guess(card_colour);
             }
         }
+    }
 
-        if self.clients.get(&t) == self.current_player.as_ref() {
-            self.clients.remove(&t);
-            if self.clients.len() > 1 {
-                debug!(
-                    "beforing changing to next player: {:?}",
-                    self.current_player
-                );
-                self.next_player();
-                debug!("Changing to next player: {:?}", self.current_player);
-                true
-            } else {
-                debug!("The only player has left the game.");
-                self.started = false;
-                false
+    fn add_client(&mut self, username: String) {
+        // scope for clients mutable borrow
+        info!("Adding client {}", username);
+        {
+            let mut clients = self.clients.borrow_mut();
+            if let Some(_) = clients.get(&self.out.token()) {
+                // Client already exists.. do nothing
+                info!("{} is already logged in... doing nothing.", username);
+                return;
+            }
+
+            clients.insert(
+                self.out.token(),
+                Client {
+                    username: username.clone(),
+                    token: self.out.token().0,
+                },
+            );
+        }
+
+        // scope for game mutable borrow
+        let current_player = {
+            let mut game = self.game.borrow_mut();
+            game.add_player(username.clone());
+            game.get_current_player().unwrap().clone()
+        };
+
+        self.broadcast_players();
+        self.out.send(SendableMessage::LoggedIn);
+        self.out.send(SendableMessage::Turn { username: current_player });
+    }
+
+    fn check_is_players_go(&mut self) -> bool {
+        let clients = self.clients.borrow();
+        let mut game = self.game.borrow_mut();
+        if let (Some(client), Some(username)) =
+            (clients.get(&self.out.token()), game.get_current_player())
+        {
+            if &client.username == username {
+                return true
+            }
+        }
+        false
+    }
+
+    fn recieved_guess(&mut self, card_colour: &CardColour) {
+        if !self.check_is_players_go() {
+            return;
+        }
+        let mut game = self.game.borrow_mut();
+        let current_player = game.get_current_player().unwrap().clone();
+        let (correct, penalty, next_player) = game.play_turn(card_colour);
+        let message = if correct {
+            debug!("correct guess for {}", current_player);
+            SendableMessage::CorrectGuess {
+                drinking_seconds: penalty,
+                username: current_player,
             }
         } else {
-            debug!("The player who's leaving isn't the current player");
-            self.clients.remove(&t);
-            false
-        }
+            debug!("incorrect guess for {}", current_player);
+            SendableMessage::WrongGuess {
+                drinking_seconds: penalty,
+                username: current_player,
+            }
+        };
+        self.out.send(message);
+        self.out.send(SendableMessage::Turn {
+            username: next_player.unwrap().clone(),
+        });
     }
 
-    pub fn get_current_player(&self) -> &Option<Client> {
-        &self.current_player
+    fn write_messages(&mut self, messages: Vec<SendableMessage>) -> WsResult<()> {
+        for message in messages {
+            self.out.send(message)?;
+        }
+        Ok(())
     }
 
-    pub fn next_player(&mut self) -> &Client {
-        // let players: Vec<&Client> = self.clients.values().collect();
-        // let players: Vec<&Client> = self.clients.values().collect();
-
-        // Check bounds incase len has shrunk from players leaving
-        if self.current_player_index >= self.clients_vec.len() {
-            self.current_player_index = 0;
+    fn broadcast_messages(&self, messages: Vec<SendableMessage>) -> WsResult<()> {
+        for message in messages {
+            self.out.broadcast(message)?;
         }
+        Ok(())
+    }
 
-        let player = &self.clients_vec[self.current_player_index];
-        self.current_player_index += 1;
-        self.current_player = Some(player.clone());
-        &player
+    fn remove_client(&mut self) {
+        debug!("Removing client");
+        let mut broadcast_messages = Vec::new();
+        let mut clients = self.clients.borrow_mut();
+        let mut game = self.game.borrow_mut();
+
+        if let Some(client) = clients.get(&self.out.token()) {
+            if game.remove_player(&client.username) {
+                let player = game.get_current_player();
+                if let Some(p) = player {
+                    broadcast_messages.push(SendableMessage::PlayerHasLeft {
+                        username: p.clone(),
+                    });
+                    broadcast_messages.push(SendableMessage::Turn {
+                        username: p.clone(),
+                    });
+                }
+            }
+        }
+        clients.remove(&self.out.token());
+        self.broadcast_messages(broadcast_messages);
+    }
+}
+
+impl Handler for Server {
+    fn on_message(&mut self, msg: Message) -> WsResult<()> {
+        debug!("Received message: {}", msg);
+        match msg {
+            Text(s) => match serde_json::from_str::<ReceivableMessage>(&s) {
+                Ok(rmsg) => self.handle_message(&rmsg),
+                _ => self.out.send(Server::unrecognised_msg()).unwrap(),
+            },
+            _ => self.out.send(Server::unrecognised_msg()).unwrap(),
+        };
+        Ok(())
+    }
+
+    fn on_close(&mut self, code: CloseCode, reason: &str) {
+        // The WebSocket protocol allows for a utf8 reason for the closing state after the
+        // close code. WS-RS will attempt to interpret this data as a utf8 description of the
+        // reason for closing the connection. I many cases, `reason` will be an empty string.
+        // So, you may not normally want to display `reason` to the user,
+        // but let's assume that we know that `reason` is human-readable.
+
+        self.remove_client();
+        match code {
+            CloseCode::Normal => info!("The client is done with the connection."),
+            CloseCode::Away => info!("The client is leaving the site."),
+            _ => error!("Close code: {:?}, reason: {}", code, reason),
+        }
     }
 }
