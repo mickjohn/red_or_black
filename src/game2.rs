@@ -111,7 +111,7 @@ impl RedOrBlack {
 }
 
 #[cfg(test)]
-mod tests {
+mod unit {
     use super::*;
 
     mod penalty {
@@ -137,7 +137,7 @@ mod tests {
         fn incorrect_guess_increments() {
             let usernames = vec!["mick".to_string()];
             let mut game = RedOrBlack::new(usernames);
-            let mut correct_count = 0;
+            let mut correct_count = 1;
             let guess = CardColour::Red;
             // while we guess correctly the penalty should not change
             while game.play_turn(&guess).0 == true {
@@ -233,7 +233,7 @@ mod tests {
         assert_eq!(
             game.validate_guess(
                 &CardColour::Red,
-                &Card {
+                Card {
                     value: Value::Ace,
                     suit: Suit::Heart,
                 }
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(
             game.validate_guess(
                 &CardColour::Black,
-                &Card {
+                Card {
                     value: Value::Ace,
                     suit: Suit::Diamond,
                 }
@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(
             game.validate_guess(
                 &CardColour::Red,
-                &Card {
+                Card {
                     value: Value::Ace,
                     suit: Suit::Spade,
                 }
@@ -266,7 +266,7 @@ mod tests {
         assert_eq!(
             game.validate_guess(
                 &CardColour::Black,
-                &Card {
+                Card {
                     value: Value::Ace,
                     suit: Suit::Club,
                 }
