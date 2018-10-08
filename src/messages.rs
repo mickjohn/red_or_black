@@ -2,13 +2,13 @@ use game::Client;
 use serde_json;
 use ws::Message;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum CardColour {
     Red,
     Black,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub enum ReceivableMessage {
     Login { username: String },
     Guess { card_colour: CardColour },
@@ -51,6 +51,20 @@ impl From<SendableMessage> for Message {
 
 impl<'a> From<&'a SendableMessage> for Message {
     fn from(s: &'a SendableMessage) -> Message {
+        Message::text(serde_json::to_string(s).unwrap())
+    }
+}
+
+#[cfg(test)]
+impl From<ReceivableMessage> for Message {
+    fn from(s: ReceivableMessage) -> Message {
+        Message::text(serde_json::to_string(&s).unwrap())
+    }
+}
+
+#[cfg(test)]
+impl<'a> From<&'a ReceivableMessage> for Message {
+    fn from(s: &'a ReceivableMessage) -> Message {
         Message::text(serde_json::to_string(s).unwrap())
     }
 }
