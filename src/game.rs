@@ -81,8 +81,20 @@ impl Server {
             game.get_current_player().unwrap().clone()
         };
 
+        let penalty = self.game.borrow().get_penalty();
+
+        // Send out updated player list
         self.broadcast_players().unwrap();
+
+        // Tell the new player that they are logged in
         self.out.send(SendableMessage::LoggedIn).unwrap();
+
+        // Tell the new player the penalty
+        self.out
+            .send(SendableMessage::Penalty { penalty })
+            .unwrap();
+
+        // Tell the player whose turn it is
         self.out
             .send(SendableMessage::Turn {
                 username: current_player,
@@ -116,20 +128,9 @@ impl Server {
             penalty,
             username: current_player,
         };
-        // let message = if correct {
-        //     debug!("correct guess for {}", current_player);
-        //     SendableMessage::CorrectGuess {
-        //         drinking_seconds: penalty,
-        //         username: current_player,
-        //     }
-        // } else {
-        //     debug!("incorrect guess for {}", current_player);
-        //     SendableMessage::WrongGuess {
-        //         drinking_seconds: penalty,
-        //         username: current_player,
-        //     }
-        // };
-        self.out.send(message).unwrap();
+
+        // Broadcast the result to everyone.
+        self.out.broadcast(message).unwrap();
         self.out
             .send(SendableMessage::Turn {
                 username: next_player.unwrap().clone(),
@@ -138,23 +139,29 @@ impl Server {
 
     fn remove_client(&mut self) {
         debug!("Removing client");
-        let mut clients = self.clients.borrow_mut();
-        let mut game = self.game.borrow_mut();
+        // Scope for clients & game borrow
+        {
+            let mut clients = self.clients.borrow_mut();
+            let mut game = self.game.borrow_mut();
 
-        if let Some(client) = clients.get(&self.out.token()) {
-            if game.remove_player(&client.username) {
-                let player = game.get_current_player();
-                if let Some(p) = player {
-                    self.out.broadcast(SendableMessage::PlayerHasLeft {
-                        username: p.clone(),
-                    }).unwrap();
-                    self.out.broadcast(SendableMessage::Turn {
-                        username: p.clone(),
-                    }).unwrap();
+            if let Some(client) = clients.get(&self.out.token()) {
+                if game.remove_player(&client.username) {
+                    let player = game.get_current_player();
+                    if let Some(p) = player {
+                        self.out
+                            .broadcast(SendableMessage::PlayerHasLeft {
+                                username: p.clone(),
+                            }).unwrap();
+                        self.out
+                            .broadcast(SendableMessage::Turn {
+                                username: p.clone(),
+                            }).unwrap();
+                    }
                 }
             }
+            clients.remove(&self.out.token());
         }
-        clients.remove(&self.out.token());
+        self.broadcast_players();
     }
 }
 

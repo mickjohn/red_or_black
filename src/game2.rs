@@ -1,11 +1,37 @@
 use deck::{Card, Deck, Suit};
 use messages::CardColour;
 
+
+#[derive(Clone,Serialize)]
+pub struct CardHistory {
+    size: u16,
+    // Maybe should be linked list
+    history: Vec<Option<Card>>,
+}
+
+impl CardHistory {
+    pub fn new(size: u16) -> Self {
+        CardHistory {
+            size,
+            history: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, card: Card) -> &Vec<Option<Card>> {
+        self.history.push(Some(card));
+        if self.history.len() >= self.size as usize{
+            self.history.remove(0);
+        }
+        &self.history
+    }
+}
+
 pub struct RedOrBlack {
     usernames: Vec<String>,
     index: usize,
     penalty: u16,
     deck: Deck,
+    card_history: CardHistory,
 }
 
 impl RedOrBlack {
@@ -15,10 +41,10 @@ impl RedOrBlack {
             index: 0,
             penalty: 5,
             deck: Deck::new_shuffled(),
+            card_history: CardHistory::new(3),
         }
     }
 
-    #[cfg(test)] // only used by test code at the moment.
     pub fn get_penalty(&self) -> u16 {
         self.penalty
     }
@@ -71,6 +97,12 @@ impl RedOrBlack {
         if let Some(index) = self.usernames.iter().position(|u| u == username) {
             self.usernames.remove(index);
         }
+
+        if self.usernames.len() == 0 {
+            // Reset penalty
+            self.penalty = 5;
+        }
+
         changed_turn
     }
 
@@ -96,6 +128,7 @@ impl RedOrBlack {
     // validate guess, and change players turn
     pub fn play_turn(&mut self, guess: &CardColour) -> (bool, u16, Option<&String>, Card) {
         let card = self.draw_card();
+        self.card_history.push(card);
         let correct = self.validate_guess(guess, card);
         let penalty = if correct {
             self.increment_penalty()

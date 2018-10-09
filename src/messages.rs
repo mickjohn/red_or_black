@@ -1,7 +1,7 @@
+use deck;
 use game::Client;
 use serde_json;
 use ws::Message;
-use deck;
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum CardColour {
@@ -36,6 +36,9 @@ pub enum SendableMessage {
         card: deck::Card,
         penalty: u16,
         username: String,
+    },
+    Penalty {
+        penalty: u16,
     },
     CorrectGuess {
         drinking_seconds: u16,
