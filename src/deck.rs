@@ -1,12 +1,12 @@
 use rand::{thread_rng, Rng};
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Card {
     pub value: Value,
     pub suit: Suit,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Value {
     Ace,
     Two,
@@ -23,7 +23,7 @@ pub enum Value {
     King,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Suit {
     Spade,
     Club,

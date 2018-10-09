@@ -94,7 +94,7 @@ impl RedOrBlack {
     }
 
     // validate guess, and change players turn
-    pub fn play_turn(&mut self, guess: &CardColour) -> (bool, u16, Option<&String>) {
+    pub fn play_turn(&mut self, guess: &CardColour) -> (bool, u16, Option<&String>, Card) {
         let card = self.draw_card();
         let correct = self.validate_guess(guess, card);
         let penalty = if correct {
@@ -103,10 +103,9 @@ impl RedOrBlack {
             let penalty = self.penalty;
             self.reset_penalty();
             penalty
-            // self.increment_penalty()
         };
         let player = self.next_player();
-        (correct, penalty, player)
+        (correct, penalty, player, card)
     }
 }
 

@@ -18,9 +18,6 @@ pub struct Server {
     pub clients: Rc<RefCell<HashMap<Token, Client>>>,
     // The game state also needs to be modified by multiple connections
     pub game: Rc<RefCell<RedOrBlack>>,
-    // A mutex to allow only one 'thread' to send messages at a time.
-    // This is to ensure messages are sent in the order I want them to.
-    // pub write_lock: Rc<Mutex<()>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -112,20 +109,26 @@ impl Server {
         }
         let mut game = self.game.borrow_mut();
         let current_player = game.get_current_player().unwrap().clone();
-        let (correct, penalty, next_player) = game.play_turn(card_colour);
-        let message = if correct {
-            debug!("correct guess for {}", current_player);
-            SendableMessage::CorrectGuess {
-                drinking_seconds: penalty,
-                username: current_player,
-            }
-        } else {
-            debug!("incorrect guess for {}", current_player);
-            SendableMessage::WrongGuess {
-                drinking_seconds: penalty,
-                username: current_player,
-            }
+        let (correct, penalty, next_player, card) = game.play_turn(card_colour);
+        let message = SendableMessage::GuessResult {
+            correct,
+            card,
+            penalty,
+            username: current_player,
         };
+        // let message = if correct {
+        //     debug!("correct guess for {}", current_player);
+        //     SendableMessage::CorrectGuess {
+        //         drinking_seconds: penalty,
+        //         username: current_player,
+        //     }
+        // } else {
+        //     debug!("incorrect guess for {}", current_player);
+        //     SendableMessage::WrongGuess {
+        //         drinking_seconds: penalty,
+        //         username: current_player,
+        //     }
+        // };
         self.out.send(message).unwrap();
         self.out
             .send(SendableMessage::Turn {
