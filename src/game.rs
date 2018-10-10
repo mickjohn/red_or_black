@@ -132,7 +132,7 @@ impl Server {
         // Broadcast the result to everyone.
         self.out.broadcast(message).unwrap();
         self.out
-            .send(SendableMessage::Turn {
+            .broadcast(SendableMessage::Turn {
                 username: next_player.unwrap().clone(),
             }).unwrap();
     }
