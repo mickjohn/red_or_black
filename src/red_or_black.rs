@@ -270,6 +270,37 @@ mod unit {
         }
     }
 
+    mod card_history {
+        use super::*;
+        use deck::*;
+
+        #[test]
+        fn card_gets_added_to_history() {
+            let mut game = RedOrBlack::new(vec!["renton".to_string()]);
+            let guess = CardColour::Red;
+            game.play_turn(&guess);
+            let history = game.get_card_history();
+            assert!(history[0].is_some());
+            assert!(history[1].is_none());
+            assert!(history[2].is_none());
+        }
+
+        #[test]
+        fn history_doesnt_grow() {
+            let mut game = RedOrBlack::new(vec!["renton".to_string()]);
+            let guess = CardColour::Red;
+            let (_,_,_, card1) = game.play_turn(&guess);
+            let (_,_,_, card2) = game.play_turn(&guess);
+            let (_,_,_, card3) = game.play_turn(&guess);
+            let (_,_,_, card4) = game.play_turn(&guess);
+            let history = game.get_card_history();
+            assert_eq!(history[0], Some(card4));
+            assert_eq!(history[1], Some(card3));
+            assert_eq!(history[2], Some(card2));
+            assert_eq!(history.len(), 3);
+        }
+    }
+
     #[test]
     fn validate_guess() {
         use deck::{Card, Suit, Value};
