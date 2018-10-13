@@ -11,14 +11,14 @@ pub enum CardColour {
     Black,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ReceivableMessage {
     Login { username: String },
     Guess { card_colour: CardColour },
-    RequestHistory,
+    RequestHistory { _dummy_key: u16 },
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "msg_type")]
 pub enum SendableMessage {
     Ok {

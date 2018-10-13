@@ -44,6 +44,7 @@ impl Server {
 
     fn handle_message(&mut self, msg: &ReceivableMessage) {
         use messages::ReceivableMessage::*;
+        debug!("{:?}", msg);
         match msg {
             Login { username: ref u } => {
                 self.add_client(u.to_string());
@@ -51,7 +52,7 @@ impl Server {
             Guess { ref card_colour } => {
                 self.recieved_guess(card_colour);
             },
-            RequestHistory => {
+            RequestHistory { _dummy_key: _ } => {
                 self.broadcast_card_history();
             }
         }
