@@ -10,8 +10,8 @@ extern crate log;
 
 mod deck;
 mod game;
-mod red_or_black;
 mod messages;
+mod red_or_black;
 
 use std::cell::RefCell;
 use std::collections::HashMap;

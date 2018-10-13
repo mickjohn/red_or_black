@@ -48,10 +48,10 @@ impl Server {
         match msg {
             Login { username: ref u } => {
                 self.add_client(u.to_string());
-            },
+            }
             Guess { ref card_colour } => {
                 self.recieved_guess(card_colour);
-            },
+            }
             RequestHistory { _dummy_key: _ } => {
                 self.broadcast_card_history();
             }
@@ -61,7 +61,9 @@ impl Server {
     fn broadcast_card_history(&mut self) {
         let game = self.game.borrow();
         let history = game.get_card_history().clone();
-        self.out.broadcast(SendableMessage::RequestHistory { history }).unwrap();
+        self.out
+            .broadcast(SendableMessage::RequestHistory { history })
+            .unwrap();
     }
 
     fn add_client(&mut self, username: String) {
@@ -100,9 +102,7 @@ impl Server {
         self.out.send(SendableMessage::LoggedIn).unwrap();
 
         // Tell the new player the penalty
-        self.out
-            .send(SendableMessage::Penalty { penalty })
-            .unwrap();
+        self.out.send(SendableMessage::Penalty { penalty }).unwrap();
 
         // Tell the player whose turn it is
         self.out

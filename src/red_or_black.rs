@@ -2,8 +2,7 @@ use deck::{Card, Deck, Suit};
 use messages::CardColour;
 use std::collections::VecDeque;
 
-
-#[derive(Clone,Serialize)]
+#[derive(Clone, Serialize)]
 pub struct CardHistory {
     size: u16,
     history: VecDeque<Option<Card>>,
@@ -16,15 +15,12 @@ impl CardHistory {
             vdq.push_front(None);
         }
 
-        CardHistory {
-            size,
-            history: vdq,
-        }
+        CardHistory { size, history: vdq }
     }
 
     pub fn push(&mut self, card: Card) -> &VecDeque<Option<Card>> {
         self.history.push_front(Some(card));
-        if self.history.len() >= self.size as usize{
+        if self.history.len() >= self.size as usize {
             self.history.pop_back();
         }
         &self.history
@@ -289,10 +285,10 @@ mod unit {
         fn history_doesnt_grow() {
             let mut game = RedOrBlack::new(vec!["renton".to_string()]);
             let guess = CardColour::Red;
-            let (_,_,_, card1) = game.play_turn(&guess);
-            let (_,_,_, card2) = game.play_turn(&guess);
-            let (_,_,_, card3) = game.play_turn(&guess);
-            let (_,_,_, card4) = game.play_turn(&guess);
+            let (_, _, _, card1) = game.play_turn(&guess);
+            let (_, _, _, card2) = game.play_turn(&guess);
+            let (_, _, _, card3) = game.play_turn(&guess);
+            let (_, _, _, card4) = game.play_turn(&guess);
             let history = game.get_card_history();
             assert_eq!(history[0], Some(card4));
             assert_eq!(history[1], Some(card3));

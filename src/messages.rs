@@ -1,9 +1,9 @@
 use deck;
+use deck::Card;
 use game::Client;
 use serde_json;
-use ws::Message;
 use std::collections::VecDeque;
-use deck::Card;
+use ws::Message;
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum CardColour {
