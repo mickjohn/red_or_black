@@ -1,27 +1,36 @@
 use deck::{Card, Deck, Suit};
 use messages::CardColour;
+use std::collections::VecDeque;
 
 
 #[derive(Clone,Serialize)]
 pub struct CardHistory {
     size: u16,
-    // Maybe should be linked list
-    history: Vec<Option<Card>>,
+    history: VecDeque<Option<Card>>,
 }
 
 impl CardHistory {
     pub fn new(size: u16) -> Self {
+        let mut vdq = VecDeque::with_capacity(size as usize);
+        for _ in 0..size {
+            vdq.push_front(None);
+        }
+
         CardHistory {
             size,
-            history: Vec::new(),
+            history: vdq,
         }
     }
 
-    pub fn push(&mut self, card: Card) -> &Vec<Option<Card>> {
-        self.history.push(Some(card));
+    pub fn push(&mut self, card: Card) -> &VecDeque<Option<Card>> {
+        self.history.push_front(Some(card));
         if self.history.len() >= self.size as usize{
-            self.history.remove(0);
+            self.history.pop_back();
         }
+        &self.history
+    }
+
+    pub fn get_history(&self) -> &VecDeque<Option<Card>> {
         &self.history
     }
 }
@@ -43,6 +52,10 @@ impl RedOrBlack {
             deck: Deck::new_shuffled(),
             card_history: CardHistory::new(3),
         }
+    }
+
+    pub fn get_card_history(&self) -> &VecDeque<Option<Card>> {
+        self.card_history.get_history()
     }
 
     pub fn get_penalty(&self) -> u16 {
@@ -98,8 +111,9 @@ impl RedOrBlack {
             self.usernames.remove(index);
         }
 
-        if self.usernames.len() == 0 {
-            // Reset penalty
+        if self.usernames.is_empty() {
+            // Reset penalty since we have 0 players
+            // If someone joins it's basically a new game
             self.penalty = 5;
         }
 

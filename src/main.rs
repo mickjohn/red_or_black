@@ -10,7 +10,7 @@ extern crate log;
 
 mod deck;
 mod game;
-mod game2;
+mod red_or_black;
 mod messages;
 
 use std::cell::RefCell;
@@ -20,7 +20,7 @@ use std::rc::Rc;
 use ws::listen;
 
 fn main() {
-    let game = Rc::new(RefCell::new(game2::RedOrBlack::new(Vec::new())));
+    let game = Rc::new(RefCell::new(red_or_black::RedOrBlack::new(Vec::new())));
     let clients = Rc::new(RefCell::new(HashMap::new()));
 
     if env::var("RUST_LOG").is_err() {

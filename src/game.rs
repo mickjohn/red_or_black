@@ -1,5 +1,4 @@
-// use super::Client;
-use game2::RedOrBlack;
+use red_or_black::RedOrBlack;
 
 use serde_json;
 use std::collections::HashMap;
@@ -44,14 +43,24 @@ impl Server {
     // end helpers
 
     fn handle_message(&mut self, msg: &ReceivableMessage) {
+        use messages::ReceivableMessage::*;
         match msg {
-            ReceivableMessage::Login { username: ref u } => {
+            Login { username: ref u } => {
                 self.add_client(u.to_string());
-            }
-            ReceivableMessage::Guess { ref card_colour } => {
+            },
+            Guess { ref card_colour } => {
                 self.recieved_guess(card_colour);
+            },
+            RequestHistory => {
+                self.broadcast_card_history();
             }
         }
+    }
+
+    fn broadcast_card_history(&mut self) {
+        let game = self.game.borrow();
+        let history = game.get_card_history().clone();
+        self.out.broadcast(SendableMessage::RequestHistory { history }).unwrap();
     }
 
     fn add_client(&mut self, username: String) {
@@ -161,7 +170,7 @@ impl Server {
             }
             clients.remove(&self.out.token());
         }
-        self.broadcast_players();
+        self.broadcast_players().unwrap();
     }
 }
 
@@ -206,12 +215,12 @@ mod integration {
     //     use std::collections::HashMap;
     //     use std::rc::Rc;
     //     use game;
-    //     use game2;
+    //     use red_or_black;
     //     use messages::*;
 
     //     #[test]
     //     fn can_login() {
-    //         let game = Rc::new(RefCell::new(game2::RedOrBlack::new(Vec::new())));
+    //         let game = Rc::new(RefCell::new(game::RedOrBlack::new(Vec::new())));
     //         let clients = Rc::new(RefCell::new(HashMap::new()));
     //         // Start server
     //         listen("127.0.0.1:8000", |out| game::Server {

@@ -2,6 +2,8 @@ use deck;
 use game::Client;
 use serde_json;
 use ws::Message;
+use std::collections::VecDeque;
+use deck::Card;
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum CardColour {
@@ -13,6 +15,7 @@ pub enum CardColour {
 pub enum ReceivableMessage {
     Login { username: String },
     Guess { card_colour: CardColour },
+    RequestHistory,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -51,6 +54,9 @@ pub enum SendableMessage {
     PlayerHasLeft {
         username: String,
     },
+    RequestHistory {
+        history: VecDeque<Option<Card>>,
+    },
 }
 
 impl From<SendableMessage> for Message {
@@ -60,7 +66,7 @@ impl From<SendableMessage> for Message {
 }
 
 impl<'a> From<&'a SendableMessage> for Message {
-    fn from(s: &'a SendableMessage) -> Message {
+    fn from(s: &SendableMessage) -> Message {
         Message::text(serde_json::to_string(s).unwrap())
     }
 }
