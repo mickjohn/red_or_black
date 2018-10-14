@@ -52,17 +52,14 @@ impl Server {
             Guess { ref card_colour } => {
                 self.recieved_guess(card_colour);
             }
-            RequestHistory { _dummy_key: _ } => {
-                self.broadcast_card_history();
-            }
         }
     }
 
-    fn broadcast_card_history(&mut self) {
+    fn send_card_history(&mut self) {
         let game = self.game.borrow();
         let history = game.get_card_history().clone();
         self.out
-            .broadcast(SendableMessage::RequestHistory { history })
+            .send(SendableMessage::RequestHistory { history })
             .unwrap();
     }
 
@@ -103,6 +100,9 @@ impl Server {
 
         // Tell the new player the penalty
         self.out.send(SendableMessage::Penalty { penalty }).unwrap();
+
+        // Send the new player the last three cards
+        self.send_card_history();
 
         // Tell the player whose turn it is
         self.out

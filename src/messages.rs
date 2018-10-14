@@ -15,7 +15,6 @@ pub enum CardColour {
 pub enum ReceivableMessage {
     Login { username: String },
     Guess { card_colour: CardColour },
-    RequestHistory { _dummy_key: u16 },
 }
 
 #[derive(Debug, Deserialize, Serialize)]

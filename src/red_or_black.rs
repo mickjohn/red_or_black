@@ -108,9 +108,9 @@ impl RedOrBlack {
         }
 
         if self.usernames.is_empty() {
-            // Reset penalty since we have 0 players
-            // If someone joins it's basically a new game
-            self.penalty = 5;
+            // Reset game since we have 0 players
+            // If someone joins after this it's basically a new game
+            self.reset();
         }
 
         changed_turn
@@ -149,6 +149,12 @@ impl RedOrBlack {
         };
         let player = self.next_player();
         (correct, penalty, player, card)
+    }
+
+    fn reset(&mut self) {
+        self.penalty = 5;
+        self.card_history = CardHistory::new(3);
+        self.deck = Deck::new_shuffled();
     }
 }
 
