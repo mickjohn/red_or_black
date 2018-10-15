@@ -2,6 +2,41 @@ use deck::{Card, Deck, Suit};
 use messages::CardColour;
 use std::collections::VecDeque;
 
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct HistoryItem {
+    pub username: String,
+    pub guess: CardColour,
+    pub outcome: bool,
+    pub card: Card,
+    pub penalty: u16,
+}
+
+pub struct GameHistory {
+    size: u16,
+    history: Vec<HistoryItem>,
+}
+
+impl GameHistory {
+    pub fn new(size: u16) -> Self {
+        GameHistory {
+            size,
+            history: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, item: HistoryItem) -> &Vec<HistoryItem> {
+        self.history.push(item);
+        if self.history.len() > self.size as usize {
+            self.history.remove(0);
+        }
+        &self.history
+    }
+
+    pub fn get_history(&self) -> &Vec<HistoryItem> {
+        &self.history
+    }
+}
+
 #[derive(Clone, Serialize)]
 pub struct CardHistory {
     size: u16,
@@ -37,6 +72,7 @@ pub struct RedOrBlack {
     penalty: u16,
     deck: Deck,
     card_history: CardHistory,
+    game_history: GameHistory,
 }
 
 impl RedOrBlack {
@@ -47,6 +83,7 @@ impl RedOrBlack {
             penalty: 5,
             deck: Deck::new_shuffled(),
             card_history: CardHistory::new(3),
+            game_history: GameHistory::new(40),
         }
     }
 
@@ -147,6 +184,16 @@ impl RedOrBlack {
             self.reset_penalty();
             penalty
         };
+
+        let history_item = HistoryItem {
+            username: self.get_current_player().cloned().unwrap_or("".to_string()),
+            guess: guess.clone(),
+            outcome: correct,
+            card,
+            penalty,
+        };
+        self.game_history.push(history_item);
+
         let player = self.next_player();
         (correct, penalty, player, card)
     }
@@ -352,5 +399,81 @@ mod unit {
             ),
             true
         );
+    }
+}
+
+#[cfg(test)]
+mod game_history {
+    use super::*;
+    use deck::*;
+
+    #[test]
+    fn can_push_onto_history() {
+        let mut game_history = GameHistory::new(3);
+        assert!(game_history.get_history().is_empty());
+        let item = HistoryItem {
+            username: "Jimmy".to_string(),
+            guess: CardColour::Red,
+            outcome: true,
+            card: Card {
+                value: Value::Ace,
+                suit: Suit::Club,
+            },
+            penalty: 5,
+        };
+        game_history.push(item);
+        assert_eq!(game_history.get_history().len(), 1);
+    }
+
+    #[test]
+    fn history_is_truncated() {
+        let mut game_history = GameHistory::new(3);
+        let item = HistoryItem {
+            username: "Jimmy".to_string(),
+            guess: CardColour::Red,
+            outcome: true,
+            card: Card {
+                value: Value::Ace,
+                suit: Suit::Club,
+            },
+            penalty: 5,
+        };
+        game_history.push(item.clone());
+        game_history.push(item.clone());
+        game_history.push(item.clone());
+        game_history.push(item);
+        assert_eq!(game_history.get_history().len(), 3);
+    }
+
+    #[test]
+    fn old_items_are_truncated_first() {
+        let mut game_history = GameHistory::new(3);
+        let old_item = HistoryItem {
+            username: "Jimmy".to_string(),
+            guess: CardColour::Red,
+            outcome: true,
+            card: Card {
+                value: Value::Ace,
+                suit: Suit::Club,
+            },
+            penalty: 5,
+        };
+
+        let new_item = HistoryItem {
+            username: "Jimmy newtron".to_string(),
+            guess: CardColour::Red,
+            outcome: false,
+            card: Card {
+                value: Value::Ace,
+                suit: Suit::Club,
+            },
+            penalty: 5,
+        };
+        game_history.push(old_item.clone());
+        game_history.push(new_item.clone());
+        game_history.push(new_item.clone());
+        assert_eq!(game_history.get_history()[0], old_item);
+        game_history.push(new_item.clone());
+        assert_eq!(game_history.get_history()[0], new_item);
     }
 }

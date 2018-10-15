@@ -5,7 +5,7 @@ use serde_json;
 use std::collections::VecDeque;
 use ws::Message;
 
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum CardColour {
     Red,
     Black,
