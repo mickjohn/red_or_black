@@ -2,13 +2,14 @@ use deck::{Card, Deck, Suit};
 use messages::CardColour;
 use std::collections::VecDeque;
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct HistoryItem {
     pub username: String,
     pub guess: CardColour,
     pub outcome: bool,
     pub card: Card,
     pub penalty: u16,
+    pub turn_number: u16,
 }
 
 pub struct GameHistory {
@@ -73,6 +74,7 @@ pub struct RedOrBlack {
     deck: Deck,
     card_history: CardHistory,
     game_history: GameHistory,
+    turn_number: u16,
 }
 
 impl RedOrBlack {
@@ -84,11 +86,16 @@ impl RedOrBlack {
             deck: Deck::new_shuffled(),
             card_history: CardHistory::new(3),
             game_history: GameHistory::new(40),
+            turn_number: 1,
         }
     }
 
     pub fn get_card_history(&self) -> &VecDeque<Option<Card>> {
         self.card_history.get_history()
+    }
+
+    pub fn get_game_history(&self) -> &Vec<HistoryItem> {
+        self.game_history.get_history()
     }
 
     pub fn get_penalty(&self) -> u16 {
@@ -161,13 +168,13 @@ impl RedOrBlack {
         if let Some(card) = self.deck.pop() {
             card
         } else {
+            info!("Deck finished!!! re-shuffling");
             self.deck = Deck::new_shuffled();
             self.deck.pop().unwrap()
         }
     }
 
     pub fn validate_guess(&self, guess: &CardColour, card: Card) -> bool {
-        // let card = self.draw_card();
         guess == &CardColour::Black && (card.suit == Suit::Spade || card.suit == Suit::Club)
             || guess == &CardColour::Red && (card.suit == Suit::Heart || card.suit == Suit::Diamond)
     }
@@ -191,17 +198,23 @@ impl RedOrBlack {
             outcome: correct,
             card,
             penalty,
+            turn_number: self.turn_number,
         };
+
         self.game_history.push(history_item);
+        self.turn_number += 1;
 
         let player = self.next_player();
         (correct, penalty, player, card)
     }
 
     fn reset(&mut self) {
+        info!("Reseting game");
         self.penalty = 5;
         self.card_history = CardHistory::new(3);
+        self.game_history = GameHistory::new(40);
         self.deck = Deck::new_shuffled();
+        self.turn_number = 1;
     }
 }
 
@@ -420,6 +433,7 @@ mod game_history {
                 suit: Suit::Club,
             },
             penalty: 5,
+            turn_number: 1,
         };
         game_history.push(item);
         assert_eq!(game_history.get_history().len(), 1);
@@ -437,6 +451,7 @@ mod game_history {
                 suit: Suit::Club,
             },
             penalty: 5,
+            turn_number: 1,
         };
         game_history.push(item.clone());
         game_history.push(item.clone());
@@ -457,6 +472,7 @@ mod game_history {
                 suit: Suit::Club,
             },
             penalty: 5,
+            turn_number: 1,
         };
 
         let new_item = HistoryItem {
@@ -468,6 +484,7 @@ mod game_history {
                 suit: Suit::Club,
             },
             penalty: 5,
+            turn_number: 1,
         };
         game_history.push(old_item.clone());
         game_history.push(new_item.clone());

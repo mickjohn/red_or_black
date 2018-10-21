@@ -63,6 +63,14 @@ impl Server {
             .unwrap();
     }
 
+    fn send_game_history(&mut self) {
+        let game = self.game.borrow();
+        let history = game.get_game_history().clone();
+        self.out
+            .send(SendableMessage::GameHistory { history })
+            .unwrap();
+    }
+
     fn add_client(&mut self, username: String) {
         // scope for clients mutable borrow
         info!("Adding client {}", username);
@@ -104,6 +112,9 @@ impl Server {
         // Send the new player the last three cards
         self.send_card_history();
 
+        // Send the new player the game history
+        self.send_game_history();
+
         // Tell the player whose turn it is
         self.out
             .send(SendableMessage::Turn {
@@ -136,9 +147,10 @@ impl Server {
             correct,
             card,
             penalty,
-            username: current_player,
+            username: current_player.clone(),
+            guess: card_colour.clone(),
         };
-
+        info!("{} was {}", current_player, correct);
         // Broadcast the result to everyone.
         self.out.broadcast(message).unwrap();
         self.out
@@ -148,7 +160,7 @@ impl Server {
     }
 
     fn remove_client(&mut self) {
-        debug!("Removing client");
+        info!("Removing client...");
         // Scope for clients & game borrow
         {
             let mut clients = self.clients.borrow_mut();

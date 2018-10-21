@@ -4,6 +4,7 @@ use game::Client;
 use serde_json;
 use std::collections::VecDeque;
 use ws::Message;
+use red_or_black::HistoryItem;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum CardColour {
@@ -17,7 +18,7 @@ pub enum ReceivableMessage {
     Guess { card_colour: CardColour },
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "msg_type")]
 pub enum SendableMessage {
     Ok {
@@ -38,6 +39,7 @@ pub enum SendableMessage {
         card: deck::Card,
         penalty: u16,
         username: String,
+        guess: CardColour,
     },
     Penalty {
         penalty: u16,
@@ -56,6 +58,9 @@ pub enum SendableMessage {
     RequestHistory {
         history: VecDeque<Option<Card>>,
     },
+    GameHistory {
+        history: Vec<HistoryItem>,
+    }
 }
 
 impl From<SendableMessage> for Message {
