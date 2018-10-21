@@ -115,6 +115,12 @@ impl Server {
         // Send the new player the game history
         self.send_game_history();
 
+        // Send now many cards are left
+        self.out
+            .send(SendableMessage::CardsLeft {
+                cards_left: self.game.borrow().cards_left(),
+            }).unwrap();
+
         // Tell the player whose turn it is
         self.out
             .send(SendableMessage::Turn {
@@ -142,7 +148,7 @@ impl Server {
         }
         let mut game = self.game.borrow_mut();
         let current_player = game.get_current_player().unwrap().clone();
-        let (correct, penalty, next_player, card) = game.play_turn(card_colour);
+        let (correct, penalty, next_player, card, cards_left) = game.play_turn(card_colour);
         let message = SendableMessage::GuessResult {
             correct,
             card,
@@ -153,6 +159,9 @@ impl Server {
         info!("{} was {}", current_player, correct);
         // Broadcast the result to everyone.
         self.out.broadcast(message).unwrap();
+        self.out
+            .broadcast(SendableMessage::CardsLeft { cards_left })
+            .unwrap();
         self.out
             .broadcast(SendableMessage::Turn {
                 username: next_player.unwrap().clone(),

@@ -1,10 +1,10 @@
 use deck;
 use deck::Card;
 use game::Client;
+use red_or_black::HistoryItem;
 use serde_json;
 use std::collections::VecDeque;
 use ws::Message;
-use red_or_black::HistoryItem;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum CardColour {
@@ -60,7 +60,10 @@ pub enum SendableMessage {
     },
     GameHistory {
         history: Vec<HistoryItem>,
-    }
+    },
+    CardsLeft {
+        cards_left: usize,
+    },
 }
 
 impl From<SendableMessage> for Message {

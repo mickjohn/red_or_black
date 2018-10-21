@@ -98,6 +98,10 @@ impl RedOrBlack {
         self.game_history.get_history()
     }
 
+    pub fn cards_left(&self) -> usize {
+        self.deck.len()
+    }
+
     pub fn get_penalty(&self) -> u16 {
         self.penalty
     }
@@ -180,7 +184,8 @@ impl RedOrBlack {
     }
 
     // validate guess, and change players turn
-    pub fn play_turn(&mut self, guess: &CardColour) -> (bool, u16, Option<&String>, Card) {
+    // return (correct, penalty, next user, the card drawn, and number of cards left)
+    pub fn play_turn(&mut self, guess: &CardColour) -> (bool, u16, Option<&String>, Card, usize) {
         let card = self.draw_card();
         self.card_history.push(card);
         let correct = self.validate_guess(guess, card);
@@ -204,8 +209,9 @@ impl RedOrBlack {
         self.game_history.push(history_item);
         self.turn_number += 1;
 
+        let cards_left = self.deck.len();
         let player = self.next_player();
-        (correct, penalty, player, card)
+        (correct, penalty, player, card, cards_left)
     }
 
     fn reset(&mut self) {
@@ -351,11 +357,15 @@ mod unit {
         fn history_doesnt_grow() {
             let mut game = RedOrBlack::new(vec!["renton".to_string()]);
             let guess = CardColour::Red;
-            let (_, _, _, card1) = game.play_turn(&guess);
-            let (_, _, _, card2) = game.play_turn(&guess);
-            let (_, _, _, card3) = game.play_turn(&guess);
-            let (_, _, _, card4) = game.play_turn(&guess);
+            let (_, _, _, card1, cards1) = game.play_turn(&guess);
+            let (_, _, _, card2, cards2) = game.play_turn(&guess);
+            let (_, _, _, card3, cards3) = game.play_turn(&guess);
+            let (_, _, _, card4, cards4) = game.play_turn(&guess);
             let history = game.get_card_history();
+            assert_eq!(cards1, 51);
+            assert_eq!(cards2, 50);
+            assert_eq!(cards3, 49);
+            assert_eq!(cards4, 48);
             assert_eq!(history[0], Some(card4));
             assert_eq!(history[1], Some(card3));
             assert_eq!(history[2], Some(card2));
