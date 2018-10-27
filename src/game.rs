@@ -1,12 +1,12 @@
 use red_or_black::RedOrBlack;
 
-use serde_json;
-use std::collections::HashMap;
-use ws::util::Token;
-
 use messages::*;
+use openssl::ssl::{SslAcceptor, SslStream};
+use serde_json;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
+use ws::util::{TcpStream, Token};
 use ws::Message::*;
 use ws::{CloseCode, Handler, Message, Result as WsResult, Sender};
 
@@ -17,6 +17,7 @@ pub struct Server {
     pub clients: Rc<RefCell<HashMap<Token, Client>>>,
     // The game state also needs to be modified by multiple connections
     pub game: Rc<RefCell<RedOrBlack>>,
+    pub ssl: Rc<SslAcceptor>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -207,6 +208,13 @@ impl Handler for Server {
             _ => self.out.send(Server::unrecognised_msg()).unwrap(),
         };
         Ok(())
+    }
+
+    fn upgrade_ssl_server(&mut self, sock: TcpStream) -> ws::Result<SslStream<TcpStream>> {
+        debug!("Received ssl upgrade message");
+        let result = self.ssl.accept(sock).map_err(From::from);
+        debug!("{:#?}", result);
+        result
     }
 
     fn on_close(&mut self, code: CloseCode, reason: &str) {
