@@ -19,17 +19,20 @@ use std::env;
 use std::rc::Rc;
 use ws::listen;
 
+static ADDRESS: &'static str = "127.0.0.1";
+static PORT: &'static str = "9000";
+
 fn main() {
     let game = Rc::new(RefCell::new(red_or_black::RedOrBlack::new(Vec::new())));
     let clients = Rc::new(RefCell::new(HashMap::new()));
+    let ip_and_port = format!("{}:{}", ADDRESS, PORT);
 
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "websocket_red_or_black=debug");
     }
     env_logger::init();
-    info!("Starting up!");
-    // listen("127.0.0.1:8000", |out| Server {
-    listen("0.0.0.0:8000", |out| game::Server {
+    info!("Starting up on {}", ip_and_port);
+    listen(ip_and_port, |out| game::Server {
         out,
         game: game.clone(),
         clients: clients.clone(),
