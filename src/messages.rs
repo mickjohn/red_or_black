@@ -1,6 +1,5 @@
 use deck;
 use deck::Card;
-use game::Client;
 use red_or_black::HistoryItem;
 use serde_json;
 use std::collections::VecDeque;
@@ -25,7 +24,7 @@ pub enum SendableMessage {
         msg: String,
     },
     Players {
-        players: Vec<Client>,
+        players: Vec<String>,
     },
     Turn {
         username: String,

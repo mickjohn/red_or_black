@@ -36,8 +36,9 @@ impl Server {
 
     fn broadcast_players(&mut self) -> WsResult<()> {
         let clients_map = self.clients.borrow();
+        let usernames: Vec<String> = clients_map.values().map(|c| c.username.clone()).collect();
         self.out.broadcast(SendableMessage::Players {
-            players: clients_map.values().cloned().collect(),
+            players: usernames,
         })
     }
     // end helpers
@@ -225,42 +226,45 @@ impl Handler for Server {
     }
 }
 
-#[cfg(test)]
-mod integration {
-    // extern crate lazy_static;
-    use messages::*;
+// #[cfg(test)]
+// mod integration {
+//     // extern crate lazy_static;
+//     use messages::*;
 
-    // DOESN'T WORK, the client is on a listen loop,  the test willl never finish...
-    // mod login {
-    //     use ws::{listen, connect, CloseCode};
-    //     use std::cell::RefCell;
-    //     use std::collections::HashMap;
-    //     use std::rc::Rc;
-    //     use game;
-    //     use red_or_black;
-    //     use messages::*;
+//     // DOESN'T WORK, the client is on a listen loop,  the test willl never finish...
+//     mod login {
+//         use ws::{listen, connect, CloseCode};
+//         use std::cell::RefCell;
+//         use std::collections::HashMap;
+//         use std::rc::Rc;
+//         use std::thread;
+//         use super::super::{Server, RedOrBlack};
+//         use red_or_black;
+//         use messages::*;
 
-    //     #[test]
-    //     fn can_login() {
-    //         let game = Rc::new(RefCell::new(game::RedOrBlack::new(Vec::new())));
-    //         let clients = Rc::new(RefCell::new(HashMap::new()));
-    //         // Start server
-    //         listen("127.0.0.1:8000", |out| game::Server {
-    //             out,
-    //             game: game.clone(),
-    //             clients: clients.clone(),
-    //         }).unwrap();
+//         #[test]
+//         fn can_login() {
+//             let child = thread::spawn(move || {
+//                 let game = Rc::new(RefCell::new(RedOrBlack::new(Vec::new())));
+//                 let clients = Rc::new(RefCell::new(HashMap::new()));
+//                 // Start server
+//                 listen("127.0.0.1:8000", |out| Server {
+//                     out,
+//                     game: game.clone(),
+//                     clients: clients.clone(),
+//                 }).unwrap();
+//                 assert_eq!(clients.borrow().len(), 0);
+//             });
 
-    //         assert_eq!(clients.borrow().len(), 0);
 
-    //         connect("ws://127.0.0.1:8000", |out| {
-    //             out.send(ReceivableMessage::Login { username: "mickjohn".to_string() });
+//             connect("ws://127.0.0.1:8000", |out| {
+//                 out.send(ReceivableMessage::Login { username: "mickjohn".to_string() });
 
-    //             move |msg| {
-    //                 println!("Got message: {}", msg);
-    //                 out.close(CloseCode::Normal)
-    //             }
-    //         }).unwrap();
-    //     }
-    // }
-}
+//                 move |msg| {
+//                     println!("Got message: {}", msg);
+//                     out.close(CloseCode::Normal)
+//                 }
+//             }).unwrap();
+//         }
+//     }
+// }
