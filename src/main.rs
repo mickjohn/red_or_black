@@ -24,6 +24,6 @@ fn main() {
     let address = env::var("RED_OR_BLACK_WEBSERVER_ADDRESS").unwrap_or("127.0.0.1".to_string());
     let port = env::var("RED_OR_BLACK_WEBSERVER_PORT").unwrap_or("9000".to_string());
     let ip_and_port = format!("{}:{}", address, port);
-    red_or_black::start_server(&ip_and_port);
     env_logger::init();
+    red_or_black::start_server(&ip_and_port);
 }
