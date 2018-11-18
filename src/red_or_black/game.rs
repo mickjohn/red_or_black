@@ -4,7 +4,7 @@ use serde_json;
 use std::collections::HashMap;
 use ws::util::Token;
 
-use messages::*;
+use super::messages::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use ws::Message::*;
@@ -44,7 +44,7 @@ impl Server {
     // end helpers
 
     fn handle_message(&mut self, msg: &ReceivableMessage) {
-        use messages::ReceivableMessage::*;
+        use super::messages::ReceivableMessage::*;
         debug!("{:?}", msg);
         match msg {
             Login { username: ref u } => {

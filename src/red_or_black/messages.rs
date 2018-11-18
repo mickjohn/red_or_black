@@ -1,6 +1,6 @@
 use deck;
 use deck::Card;
-use red_or_black::HistoryItem;
+use super::history::HistoryItem;
 use serde_json;
 use std::collections::VecDeque;
 use ws::Message;

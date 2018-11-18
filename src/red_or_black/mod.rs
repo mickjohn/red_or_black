@@ -1,7 +1,9 @@
 mod game;
 mod rules;
+mod messages;
+mod history;
 
-pub use self::rules::HistoryItem;
+// pub use self::rules::HistoryItem;
 
 use self::game::Server;
 use self::rules::RedOrBlack;

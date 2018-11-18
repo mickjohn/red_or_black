@@ -9,7 +9,6 @@ extern crate serde_json;
 extern crate log;
 
 mod deck;
-mod messages;
 mod red_or_black;
 
 use std::env;
