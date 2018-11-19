@@ -147,6 +147,7 @@ mod game_history {
     }
 }
 
+#[cfg(test)]
 mod card_history {
     use super::CardHistory;
     use deck::Deck;
