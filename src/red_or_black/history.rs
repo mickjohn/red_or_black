@@ -148,8 +148,8 @@ mod game_history {
 }
 
 mod card_history {
-    use super::*;
-    use deck::*;
+    use super::CardHistory;
+    use deck::Deck;
 
     #[test]
     fn can_push_onto_history() {
@@ -157,7 +157,32 @@ mod card_history {
         assert_eq!(history.get_history().len(), 3);
         let mut deck = Deck::new();
         let card = deck.pop().unwrap();
+        history.push(card.clone());
+        // Len is fixed size, should still be same
+        assert_eq!(history.get_history().len(), 3);
+        assert_eq!(history.get_history()[0], Some(card));
+        assert_eq!(history.get_history()[1], None);
+        assert_eq!(history.get_history()[2], None);
+    }
 
+    #[test]
+    fn history_is_truncated() {
+        let mut history = CardHistory::new(3);
+        let mut deck = Deck::new();
+        let card1 = deck.pop().unwrap();
+        let card2 = deck.pop().unwrap();
+        let card3 = deck.pop().unwrap();
+        let card4 = deck.pop().unwrap();
+        history.push(card1.clone());
+        history.push(card2.clone());
+        history.push(card3.clone());
+        assert_eq!(history.get_history()[0], Some(card3));
+        assert_eq!(history.get_history()[1], Some(card2));
+        assert_eq!(history.get_history()[2], Some(card1));
+        history.push(card4.clone());
+        assert_eq!(history.get_history()[0], Some(card4));
+        assert_eq!(history.get_history()[1], Some(card3));
+        assert_eq!(history.get_history()[2], Some(card2));
     }
 }
 

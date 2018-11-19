@@ -134,7 +134,7 @@ impl RedOrBlack {
         };
 
         let history_item = HistoryItem {
-            username: self.get_current_player().cloned().unwrap_or("".to_string()),
+            username: self.get_current_player().cloned().unwrap_or_else(|| "".to_string()),
             guess: guess.clone(),
             outcome: correct,
             card,
