@@ -37,9 +37,8 @@ impl Server {
     fn broadcast_players(&mut self) -> WsResult<()> {
         let clients_map = self.clients.borrow();
         let usernames: Vec<String> = clients_map.values().map(|c| c.username.clone()).collect();
-        self.out.broadcast(SendableMessage::Players {
-            players: usernames,
-        })
+        self.out
+            .broadcast(SendableMessage::Players { players: usernames })
     }
     // end helpers
 
@@ -255,7 +254,6 @@ impl Handler for Server {
 //                 }).unwrap();
 //                 assert_eq!(clients.borrow().len(), 0);
 //             });
-
 
 //             connect("ws://127.0.0.1:8000", |out| {
 //                 out.send(ReceivableMessage::Login { username: "mickjohn".to_string() });

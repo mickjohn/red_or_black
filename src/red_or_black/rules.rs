@@ -1,6 +1,6 @@
-use deck::{Card, Deck, Suit};
-use super::messages::CardColour;
 use super::history::*;
+use super::messages::CardColour;
+use deck::{Card, Deck, Suit};
 use std::collections::VecDeque;
 
 pub struct RedOrBlack {
@@ -134,7 +134,10 @@ impl RedOrBlack {
         };
 
         let history_item = HistoryItem {
-            username: self.get_current_player().cloned().unwrap_or_else(|| "".to_string()),
+            username: self
+                .get_current_player()
+                .cloned()
+                .unwrap_or_else(|| "".to_string()),
             guess: guess.clone(),
             outcome: correct,
             card,

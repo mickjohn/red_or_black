@@ -1,6 +1,6 @@
-use std::collections::VecDeque;
-use deck::Card;
 use super::messages::CardColour;
+use deck::Card;
+use std::collections::VecDeque;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct HistoryItem {
@@ -185,4 +185,3 @@ mod card_history {
         assert_eq!(history.get_history()[2], Some(card2));
     }
 }
-

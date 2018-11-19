@@ -1,15 +1,15 @@
 mod game;
-mod rules;
-mod messages;
 mod history;
+mod messages;
+mod rules;
 
 // pub use self::rules::HistoryItem;
 
 use self::game::Server;
 use self::rules::RedOrBlack;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
 use ws::listen;
 
 pub fn start_server(ip_and_port: &str) {
