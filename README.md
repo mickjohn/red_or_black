@@ -1,5 +1,5 @@
 # Red or Black game websocket server
-This is a multiplayer red or black drinking game that uses wbesockets and is built in rust. This is just the webserver, the frontend can be found [here](https://github.com/mickjohn/red_or_black_frontend)
+This is a multiplayer red or black drinking game that uses websockets and is built in rust. This is just the webserver, the frontend can be found [here](https://github.com/mickjohn/red_or_black_frontend)
 
 ## Getting started
 This will show you how to get this project up and running.
