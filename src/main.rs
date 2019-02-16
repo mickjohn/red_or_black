@@ -19,6 +19,8 @@ fn main() {
         env::set_var("RUST_LOG", "websocket_red_or_black=debug");
     }
 
+    env_logger::init();
+
     // Read config from env vars
     let address =
         env::var("RED_OR_BLACK_WEBSERVER_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string());
