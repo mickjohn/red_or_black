@@ -10,6 +10,7 @@ extern crate log;
 
 mod deck;
 mod red_or_black;
+mod message;
 
 use std::env;
 
