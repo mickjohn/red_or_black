@@ -2,61 +2,92 @@ use std::collections::HashMap;
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use ws::Message::*;
-use ws::{CloseCode, Handler, Message, Result as WsResult, Sender};
+use ws::{Sender, Handler, Message, Result as WsResult, listen};
+use serde_json::Value;
 
-pub struct DummyGame;
+use crate::message::IncomingMessage;
+
+pub struct DummyGame {
+    id: String,
+}
 
 impl Game for DummyGame {
-    fn handle_message(&mut self) {
+    fn handle_message(&mut self, message: Value) {
         println!("Handling message");
+        println!("This is dummygame. Message is {}", message);
     }
 }
 
 pub trait Game {
-    fn handle_message(&mut self);
+    fn handle_message(&mut self, message: Value);
 }
 
-// #[derive(Debug)]
-pub struct GameServer<'a> {
-    port: u16,
-    address: &'a str,
+pub struct GameServer {
+    // port: u16,
+    // address: String,
     games: HashMap<String, Box<Game>>,
     max_games: u64,
+    pub out: Sender,
 }
 
-impl<'a> GameServer <'a> {
-    pub fn new(port: u16, address: &'a str, max_games: u64) -> Self {
-        GameServer {
-            port,
-            address,
-            max_games,
-            games: HashMap::new(),
-        }
+impl GameServer {
+    // pub fn new(port: u16, address: String, max_games: u64) -> Self {
+    //     GameServer {
+    //         port,
+    //         address,
+    //         max_games,
+    //         games: HashMap::new(),
+    //     }
+    // }
+
+    pub fn start() {
+        listen("127.0.0.1:8080", |out| {
+            let mut gs = GameServer {
+                out,
+                max_games: 10,
+                games: HashMap::new(),
+            };
+            println!("game id 1 {}", gs.add_game());
+            println!("game id 2 {}", gs.add_game());
+            gs
+        }).unwrap()
     }
 
-    pub fn add_game(&'a mut self) -> String {
+    pub fn add_game(&mut self) -> String {
         let game_id: String = thread_rng()
             .sample_iter(&Alphanumeric)
             .take(30)
             .collect();
         info!("Adding new dummy game with ID: {}", game_id);
-        self.games.insert(game_id.clone(), Box::new(DummyGame));
-        game_id.clone()
+        self.games.insert(game_id.clone(), Box::new(DummyGame {id: game_id.clone()} ));
+        game_id
+    }
+
+    pub fn forward_message_to_game(&mut self, in_msg: IncomingMessage) {
+        if let Some(game_t) = self.games.get_mut(&in_msg.game_id) {
+            game_t.handle_message(in_msg.message);
+        } else {
+            error!("No game with id {}", in_msg.game_id)
+        }
     }
 }
 
-// impl<'a> Handler for GameServer<'a> {
-//     fn on_message(&mut self, msg: Message) -> WsResult<()> {
-//         debug!("Received message: {}", msg);
-//         match msg {
-//             Text(s) => match serde_json::from_str::<ReceivableMessage>(&s) {
-//                 Ok(rmsg) => self.handle_message(&rmsg),
-//                 _ => self.out.send(Server::unrecognised_msg()).unwrap(),
-//             },
-//             _ => self.out.send(Server::unrecognised_msg()).unwrap(),
-//         };
-//         Ok(())
-//     }
+impl Handler for GameServer {
+    fn on_message(&mut self, msg: Message) -> WsResult<()> {
+        debug!("Received message: {}", msg);
+        match msg {
+            Text(s) => match serde_json::from_str::<IncomingMessage>(&s) {
+                Ok(in_msg) => {
+                    self.forward_message_to_game(in_msg);
+                },
+                _ => {
+                    warn!("Failed to deserialize incoming message. Message was {}", &s);
+                }
+            },
+            _ => ()
+        };
+        Ok(())
+    }
 
 //     fn on_close(&mut self, code: CloseCode, reason: &str) {
 //         // The WebSocket protocol allows for a utf8 reason for the closing state after the
@@ -72,7 +103,7 @@ impl<'a> GameServer <'a> {
 //             _ => error!("Close code: {:?}, reason: {}", code, reason),
 //         }
 //     }
-// }
+}
 
 
 #[cfg(test)]

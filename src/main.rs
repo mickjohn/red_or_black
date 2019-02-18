@@ -22,6 +22,7 @@ fn main() {
     }
 
     env_logger::init();
+    game_server::GameServer::start();
 
     // Read config from env vars
     let address =
