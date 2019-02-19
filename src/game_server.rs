@@ -9,17 +9,28 @@ use crate::message::IncomingMessage;
 
 pub struct DummyGame {
     id: String,
+    name: String,
 }
 
 impl Game for DummyGame {
     fn handle_message(&mut self, message: Value) {
         println!("Handling message");
-        println!("This is dummygame. Message is {}", message);
+        println!("This is {} with ID {}. Message is {}", self.get_name(), self.get_id(), message);
+    }
+
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+     
+    fn get_id(&self) -> &str {
+        &self.id
     }
 }
 
 pub trait Game {
     fn handle_message(&mut self, message: Value);
+    fn get_name(&self) -> &str;
+    fn get_id(&self) -> &str;
 }
 
 pub struct GameServer {
@@ -59,7 +70,12 @@ impl GameServer {
             .take(30)
             .collect();
         info!("Adding new dummy game with ID: {}", game_id);
-        self.games.insert(game_id.clone(), Box::new(DummyGame {id: game_id.clone()} ));
+        let g = DummyGame {
+            id: game_id.clone(),
+            name: "DummyGame".to_string(),
+        };
+
+        self.games.insert(game_id.clone(), Box::new(g));
         game_id
     }
 
@@ -67,7 +83,7 @@ impl GameServer {
         if let Some(game_t) = self.games.get_mut(&in_msg.game_id) {
             game_t.handle_message(in_msg.message);
         } else {
-            error!("No game with id {}", in_msg.game_id)
+            warn!("No game with id {}", in_msg.game_id)
         }
     }
 }

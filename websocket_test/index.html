@@ -1,0 +1,32 @@
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>title</title>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="script.js"></script>
+</head>
+
+<body>
+    <h2>WebSocket Tester</h2>
+    <div>
+        <form>
+            <input type="text" id="websocket_url" value="ws://127.0.0.1:8080"></input>
+            <button id="websocket_connect">Connect</button>
+            <button id="websocket_disconnect">Disconnect</button>
+        </form>
+        <h3> Send Message </h3>
+        <form>
+            <h3>Send</h3>
+            <textarea id="submit_message_textbox" rows="10" cols="50"></textarea>
+            <button id="submit_message">Send</button>
+        </form>
+
+        <form>
+            <h3>Messages</h3>
+            <textarea id="messages" rows="10" cols="50"></textarea>
+        </form>
+    </div>
+</body>
+
+</html>
