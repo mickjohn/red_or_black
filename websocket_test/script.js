@@ -26,10 +26,16 @@ function init() {
         createWebsocket(addr);
     });
 
+    disconnectButton.click(function() {
+        console.log("Closing websocket");
+        websocketConn.close();
+        websocketConn = null;
+    });
+
     submitMessageButton.click(function(){
-        var msg = messagesTextArea.val();
         if (websocketConn !== null) {
-            websocket.send(message);
+          var msg = messageToSend.val();
+            websocketConn.send(msg);
             messagesTextArea.val('');
         }
     });
@@ -43,13 +49,14 @@ function init() {
 function createWebsocket(addr) {
     if (websocketConn === null) {
         console.log("Opening new websocket connection");
-        websocket = new WebSocket(addr);
-        websocket.onopen = function (evt) { onOpen(evt) };
-        websocket.onclose = function (evt) { onClose(evt) };
-        websocket.onmessage = function (evt) { onMessage(evt) };
-        websocket.onerror = function (evt) { onError(evt) };
+        websocketConn = new WebSocket(addr);
+        websocketConn.onopen = function (evt) { onOpen(evt) };
+        websocketConn.onclose = function (evt) { onClose(evt) };
+        websocketConn.onmessage = function (evt) { onMessage(evt) };
+        websocketConn.onerror = function (evt) { onError(evt) };
     } else {
         console.log("Websocket connection already exists, not creating new one");
+        writeMessage("websocket connection already open, disconnect first");
     }
 }
 
