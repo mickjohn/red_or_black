@@ -34,23 +34,12 @@ pub trait Game {
 }
 
 pub struct GameServer {
-    // port: u16,
-    // address: String,
     games: HashMap<String, Box<Game>>,
     max_games: u64,
     pub out: Sender,
 }
 
 impl GameServer {
-    // pub fn new(port: u16, address: String, max_games: u64) -> Self {
-    //     GameServer {
-    //         port,
-    //         address,
-    //         max_games,
-    //         games: HashMap::new(),
-    //     }
-    // }
-
     pub fn start() {
         listen("127.0.0.1:8080", |out| {
             let mut gs = GameServer {
@@ -65,6 +54,11 @@ impl GameServer {
     }
 
     pub fn add_game(&mut self) -> String {
+        if self.games.len() > self.max_games as usize {
+            warn!("Game server is hosting maximum number of games {}, not adding another!", self.max_games);
+            return "".to_string();
+        }
+
         let game_id: String = thread_rng()
             .sample_iter(&Alphanumeric)
             .take(30)
